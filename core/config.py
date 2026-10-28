@@ -85,7 +85,11 @@ ALIAS_COORDENADOR: dict[str, str] = {}
 # ---------------------------------------------------------------------------
 # Visual Facta
 # ---------------------------------------------------------------------------
-COR_NAVY = "#10466E"
+COR_NAVY = "#154567"          # faixa do cabeçalho dos painéis antigos
+COR_FUNDO = "#2A2828"         # fundo grafite dos painéis antigos
+COR_CARD = "#353232"
+COR_BORDA = "#433f3f"
+COR_AZUL_FACTA = "#0080F5"
 COR_LARANJA = "#FF5B00"
 COR_VERDE = "#2E7D32"
 COR_VERMELHO = "#C62828"
@@ -96,6 +100,12 @@ COR_CINZA = "#7A7A7A"
 # ---------------------------------------------------------------------------
 # Explicações das nomenclaturas (aparecem ao passar o cursor)
 # ---------------------------------------------------------------------------
+DEFINICAO_MATURIDADE = {
+    "Madura": "Score acima de 70 pontos.",
+    "Em desenvolvimento": "Score acima de 40 e até 70 pontos.",
+    "Reativa": "Score até 40 pontos.",
+}
+
 AJUDA = {
     "score": "Pontuação de 0 a 100. Cada Sim soma o peso do bloco dividido pelo número de perguntas dele. "
              "Avaliar 12, Treinar 18, Domínio de Método 22, Incentivar 8, Verificar 12, Acompanhar 13, Operação 15.",

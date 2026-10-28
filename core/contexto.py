@@ -6,8 +6,8 @@ Cada app tem um perfil:
     regional     só a visão de regional;
     coordenador  só a visão de coordenador.
 
-Enquanto o login com a conta Microsoft não existe, a pessoa escolhe o nome na
-barra lateral (acesso amplo, decisão de 27/10/2026). Quando o login entrar,
+Enquanto o login com a conta Microsoft não existe, a pessoa escolhe o nome nos
+filtros do cabeçalho (acesso amplo, decisão de 27/10/2026). Quando o login entrar,
 basta ligar TRAVAR_POR_EMAIL nos secrets: o nome passa a vir do e-mail de quem
 abriu o app, pela aba de lojas.
 """
@@ -98,7 +98,8 @@ def _travar_por_email() -> bool:
         return False
 
 
-def barra_lateral(perfil: str = "monitoria") -> Contexto:
+def filtros(perfil: str = "monitoria") -> Contexto:
+    """Filtros no cabeçalho de todas as telas: período, visão (só Monitoria) e nome."""
     d = dados.carregar()
     cfg = PERFIS[perfil]
     hoje = datetime.now(C.FUSO)
@@ -121,22 +122,26 @@ def barra_lateral(perfil: str = "monitoria") -> Contexto:
             if qp.get("nome"):
                 st.session_state["ctx_reg" if qp["visao"] == "regional" else "ctx_coord"] = qp["nome"].upper()
 
-    with st.sidebar:
-        st.markdown(f"**Checklist Gerencial · {cfg['titulo']}**")
-        st.markdown("### Período")
-        comp = st.selectbox("Competência", meses, format_func=regras.rotulo_mes, key="ctx_comp",
-                            label_visibility="collapsed")
+    varias_visoes = len(cfg["niveis"]) > 1
+    larguras = [1.1, 1.5, 2.2, 1.2] if varias_visoes else [1.1, 2.6, 1.2]
+    cols = st.columns(larguras, vertical_alignment="bottom")
+    with cols[0]:
+        comp = st.selectbox("Período", meses, format_func=regras.rotulo_mes, key="ctx_comp")
+    if varias_visoes:
+        with cols[1]:
+            if st.session_state.get("ctx_nivel") not in cfg["niveis"]:
+                st.session_state["ctx_nivel"] = cfg["niveis"][0]
+            nivel_rot = st.segmented_control("Visão", cfg["niveis"], key="ctx_nivel", selection_mode="single") \
+                or cfg["niveis"][0]
+        col_nome = cols[2]
+    else:
+        nivel_rot = cfg["niveis"][0]
+        col_nome = cols[1]
+    nivel = nivel_rot.lower()
 
-        if len(cfg["niveis"]) > 1:
-            st.markdown("### Visão")
-            nivel_rot = st.radio("Ver como", cfg["niveis"], key="ctx_nivel", label_visibility="collapsed",
-                                 horizontal=True)
-        else:
-            nivel_rot = cfg["niveis"][0]
-        nivel = nivel_rot.lower()
-
-        nome = None
-        h = hierarquia(pd.Timestamp(comp).strftime("%Y-%m-%d"))
+    nome = None
+    h = hierarquia(pd.Timestamp(comp).strftime("%Y-%m-%d"))
+    with col_nome:
         if nivel in ("regional", "coordenador"):
             col = "regional_mes" if nivel == "regional" else "coordenador_mes"
             chave = "ctx_reg" if nivel == "regional" else "ctx_coord"
@@ -147,16 +152,20 @@ def barra_lateral(perfil: str = "monitoria") -> Contexto:
                     st.error("Seu e-mail não está na aba de lojas como "
                              f"{'regional' if nivel == 'regional' else 'coordenador'}. Fale com a Monitoria.")
                     st.stop()
-                st.markdown(f"### {nivel_rot}\n{nome.title()}")
+                st.text_input(nivel_rot, nome.title(), disabled=True)
             else:
                 nome = st.selectbox(nivel_rot, nomes, key=chave, format_func=str.title)
-
-        st.divider()
-        st.caption(f"Dados: {d['origem']}\n\nAtualizado em {d['carregado_em']:%d/%m/%Y %H:%M}")
-        if st.button("Recarregar dados", use_container_width=True):
+        else:
+            st.text_input("Recorte", "Rede própria inteira", disabled=True)
+    with cols[-1]:
+        if st.button("Recarregar dados", use_container_width=True,
+                     help=f"Dados: {d['origem']}. Atualizado em {d['carregado_em']:%d/%m/%Y às %H:%M}. "
+                          "Os dados se renovam sozinhos a cada 10 minutos."):
             st.cache_data.clear()
             st.rerun()
-        if not _travar_por_email():
-            st.caption("Acesso amplo durante a migração. O login com a conta Microsoft entra depois.")
 
     return Contexto(comp=pd.Timestamp(comp), nivel=nivel, nome=nome, hoje=hoje, perfil=perfil)
+
+
+# Compatibilidade com o nome antigo
+barra_lateral = filtros

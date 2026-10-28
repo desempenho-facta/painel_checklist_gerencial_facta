@@ -11,7 +11,6 @@ d = dados.carregar()
 h = ctx.hier()
 pre = h[h["status"] == "Preencheu"]
 
-ui.topo("Casos graves", f"{ctx.rotulo_visao} · {R.rotulo_mes(ctx.comp)}")
 ui.faixa("Loja em caso grave: o preenchimento do mês tem pelo menos um destes sinais: "
          f"<b>{', '.join(C.SINAIS_GRAVES)}</b>. O tempo conta os preenchimentos seguidos com o sinal; "
          "mês sem preenchimento não zera a contagem.", pin="Regra")
@@ -24,23 +23,23 @@ g = R.casos_graves(d["validos"], ctx.comp)
 g = g[g["COD_LOJAS"].isin(set(pre["COD_LOJAS"]))]
 g = g.merge(pre[["COD_LOJAS", "LOJA", "coordenador_mes", "score", "supervisao_especial"]], on="COD_LOJAS")
 
-c = st.columns(4)
-with c[0]:
-    ui.card(len(g), "Lojas em caso grave", ui.pct(len(g) / len(pre), 0) + " das que preencheram", cor=C.COR_VERMELHO)
-with c[1]:
-    n3 = int((g["preenchimentos_seguidos"] >= 3).sum())
-    ui.card(n3, "Há 3 preenchimentos ou mais", "casos que não estão saindo", cor=C.COR_VERMELHO if n3 else "#4CAF50")
-with c[2]:
-    ui.card(int((g["qtd_sinais"] >= 3).sum()), "Com 3 sinais ou mais", "situação mais pesada", cor=C.COR_AMBAR)
-with c[3]:
-    novos = int((g["preenchimentos_seguidos"] == 1).sum())
-    ui.card(novos, "Entraram neste mês", "primeiro preenchimento com sinal", cor=C.COR_AMBAR)
+n3 = int((g["preenchimentos_seguidos"] >= 3).sum())
+ui.cards([
+    dict(numero=len(g), rotulo="Lojas em caso grave", sub=ui.pct(len(g) / len(pre), 0) + " das que preencheram",
+         cor=ui.VERMELHO_CLARO if len(g) else ui.VERDE_CLARO),
+    dict(numero=n3, rotulo="Há 3 preenchimentos ou mais", sub="casos que não estão saindo",
+         cor=ui.VERMELHO_CLARO if n3 else ui.VERDE_CLARO),
+    dict(numero=int((g["qtd_sinais"] >= 3).sum()), rotulo="Com 3 sinais ou mais", sub="situação mais pesada", cor=C.COR_AMBAR),
+    dict(numero=int((g["preenchimentos_seguidos"] == 1).sum()), rotulo="Entraram neste mês",
+         sub="primeiro preenchimento com sinal", cor=C.COR_AMBAR),
+], minimo=180)
 
-st.write("")
 st.markdown("**Quantas lojas carregam cada sinal**")
 contagem = {s: int(g["sinais"].map(lambda l, s=s: s in l).sum()) for s in C.SINAIS_GRAVES}
-st.plotly_chart(ui.barras_h(list(contagem.values()), list(contagem), [C.COR_VERMELHO] * len(contagem),
-                            altura=60 + 38 * len(contagem)), use_container_width=True)
+hover = [f"<b>{s}: {n} lojas</b><br>" + ui.lista_hover(sorted(g.loc[g["sinais"].map(lambda l, s=s: s in l), "LOJA"]))
+         for s, n in contagem.items()]
+ui.grafico(ui.barras_h(list(contagem.values()), list(contagem), [C.COR_VERMELHO] * len(contagem),
+                       altura=60 + 42 * len(contagem), hover=hover))
 
 st.markdown("**Lojas em caso grave** (as que estão há mais tempo primeiro)")
 filtro = st.multiselect("Sinal", list(C.SINAIS_GRAVES), placeholder="Todos os sinais")
@@ -66,8 +65,10 @@ tab = pd.DataFrame({
 
 st.dataframe(ui.estilo_tabela(tab, {"Supervisão especial": {"Sim": C.COR_LARANJA}}), hide_index=True,
              use_container_width=True, height=min(38 * (len(tab) + 1), 720),
-             column_config={"Em caso grave há": st.column_config.TextColumn(
+             column_config={"Loja": st.column_config.TextColumn(width=280),
+                            "Coordenador": st.column_config.TextColumn(width=240),
+                            "Em caso grave há": st.column_config.TextColumn(
                  help="Preenchimentos seguidos com pelo menos um sinal grave, mesmo que o sinal tenha mudado no caminho."),
-                 "Quais sinais e há quanto tempo": st.column_config.TextColumn(
+                 "Quais sinais e há quanto tempo": st.column_config.TextColumn(width=380,
                  help="Sinais do preenchimento do mês e há quantos preenchimentos seguidos cada um aparece.")})
 st.caption("Abra o Diagnóstico da loja para ver as respostas que levaram a cada sinal.")

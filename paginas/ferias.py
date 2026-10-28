@@ -11,7 +11,7 @@ d = dados.carregar()
 lojas = d["lojas"]
 aus = R.ausencias(lojas, ctx.hoje.date())
 
-ui.topo("Controle de férias", f"Situação em {ctx.hoje:%d/%m/%Y}")
+ui.faixa(f"Situação de hoje, <b>{ctx.hoje:%d/%m/%Y}</b>, pelas datas de início e retorno da aba de lojas.", pin="Hoje")
 
 if ctx.nivel == "regional":
     aus = aus[aus["regional"] == ctx.nome]
@@ -25,17 +25,21 @@ reg = aus[aus["papel"] == "Regional"]
 fora = lambda df: df[df["situacao_hoje"] != "Ativo"]
 lojas = lojas.assign(ausencia=R.ausencia_por_loja(lojas, R.ausencias(d["lojas"], ctx.hoje.date())))
 
-c = st.columns(5)
-with c[0]:
-    ui.card(len(fora(coord)), "Coordenadores ausentes hoje", cor=C.COR_AMBAR if len(fora(coord)) else "#4CAF50")
-with c[1]:
-    ui.card(int((coord["situacao_hoje"] == "Vaga aberta").sum()), "Vagas abertas", cor="#E5484D")
-with c[2]:
-    ui.card(len(fora(reg)), "Regionais ausentes hoje", cor=C.COR_AMBAR if len(fora(reg)) else "#4CAF50")
-with c[3]:
-    ui.card(int((lojas["ausencia"] != "Cobertura normal").sum()), "Lojas sem coordenador ou regional hoje", cor=C.COR_AMBAR)
-with c[4]:
-    ui.card(int((lojas["ausencia"] == "Coord + Regional ausentes").sum()), "Lojas sem os dois", cor="#E5484D")
+n_vagas = int((coord["situacao_hoje"] == "Vaga aberta").sum())
+n_sem = int((lojas["ausencia"] != "Cobertura normal").sum())
+n_dois = int((lojas["ausencia"] == "Coord + Regional ausentes").sum())
+ui.cards([
+    dict(numero=len(fora(coord)), rotulo="Coordenadores ausentes", sub=f"de {len(coord)} coordenadores",
+         cor=C.COR_AMBAR if len(fora(coord)) else ui.VERDE_CLARO),
+    dict(numero=n_vagas, rotulo="Vagas abertas", sub="coordenador desligado",
+         cor=ui.VERMELHO_CLARO if n_vagas else ui.VERDE_CLARO),
+    dict(numero=len(fora(reg)), rotulo="Regionais ausentes", sub=f"de {len(reg)} regionais",
+         cor=C.COR_AMBAR if len(fora(reg)) else ui.VERDE_CLARO),
+    dict(numero=n_sem, rotulo="Lojas descobertas", sub="sem coordenador ou regional",
+         cor=C.COR_AMBAR if n_sem else ui.VERDE_CLARO),
+    dict(numero=n_dois, rotulo="Lojas sem os dois", sub="coordenador e regional fora",
+         cor=ui.VERMELHO_CLARO if n_dois else ui.VERDE_CLARO),
+], minimo=170)
 
 CORES_SIT = {"Férias": C.COR_AMBAR, "Afastamento": "#E07020", "Maternidade": C.COR_AZUL,
              "Vaga aberta": C.COR_VERMELHO}
@@ -50,7 +54,8 @@ def tabela(df: pd.DataFrame):
         "_dias": df["dias_ate_proxima"],
     }).sort_values(["Situação hoje", "_dias"], key=lambda s: s.map({"Ativo": 9}).fillna(0) if s.name == "Situação hoje" else s)
     t["Em quantos dias"] = t.pop("_dias").map(lambda v: "" if pd.isna(v) else str(int(v)))
-    st.dataframe(ui.estilo_tabela(t, {"Situação hoje": CORES_SIT}), hide_index=True, use_container_width=True)
+    st.dataframe(ui.estilo_tabela(t, {"Situação hoje": CORES_SIT}), hide_index=True, use_container_width=True,
+                 column_config={"Nome": st.column_config.TextColumn(width=280)})
 
 
 st.write("")
@@ -58,4 +63,4 @@ st.markdown("**Coordenadores**")
 tabela(coord)
 st.markdown("**Regionais**")
 tabela(reg)
-st.caption("Situação hoje pelas datas de início e retorno da aba de lojas. Status DEMITIDO aparece como vaga aberta.")
+st.caption("Status DEMITIDO na aba de lojas aparece como vaga aberta.")

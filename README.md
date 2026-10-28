@@ -20,7 +20,7 @@ Painel: Visão geral, Lojas, Diagnóstico da loja, Mês a mês.
 Leituras: Pontos de atenção, O treino está funcionando?, Risco e estrutura, Casos graves.
 Rede: Ranking, Controle de férias (só Monitoria e Regionais).
 
-Na barra lateral escolhe o mês e a visão (Rede, Regional ou Coordenador).
+O menu das telas fica no topo. Logo abaixo do cabeçalho ficam os filtros: mês, visão (Rede, Regional ou Coordenador) e nome.
 Também dá para abrir direto por link: `?visao=coordenador&nome=NOME%20DO%20COORDENADOR&mes=2026-09`
 
 ## Regras

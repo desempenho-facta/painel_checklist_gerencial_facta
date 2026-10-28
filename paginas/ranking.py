@@ -9,7 +9,6 @@ from core.contexto import rankings
 ctx = st.session_state["ctx"]
 rk_coord, rk_reg = rankings(ctx.comp_iso)
 
-ui.topo("Ranking", R.rotulo_mes(ctx.comp))
 ui.faixa(f"<b>{R.aviso_mes(rk_coord, ctx.comp, ctx.hoje.date())}</b> · lista completa, com o coordenador de cada loja "
          f"naquele mês. Lojas com supervisão especial ficam fora da conta.", pin=R.rotulo_mes(ctx.comp))
 
@@ -19,7 +18,9 @@ def _mostrar(t: pd.DataFrame, destaque_nome: str | None, formatos: dict):
         marca = destaque_nome is not None and r["Nome"] == destaque_nome
         return [f"background-color:{C.COR_LARANJA}40; font-weight:700" if marca else ""] * len(r)
     st.dataframe(t.style.apply(linha, axis=1).format(formatos, na_rep=""), hide_index=True,
-                 use_container_width=True, height=min(36 * (len(t) + 1), 760))
+                 use_container_width=True, height=min(36 * (len(t) + 1), 760),
+                 column_config={"Posição": st.column_config.NumberColumn(width=80),
+                                "Nome": st.column_config.TextColumn(width=280)})
 
 
 def tabelas(rk: pd.DataFrame, destaque: str | None, rotulo: str):
@@ -40,7 +41,7 @@ def tabelas(rk: pd.DataFrame, destaque: str | None, rotulo: str):
         t.columns = ["Posição", "Nome", "Score"]
         _mostrar(t, alvo, {"Score": lambda v: ui.num(v, 2)})
     if alvo:
-        st.caption("Linha em destaque: a visão escolhida na barra lateral.")
+        st.caption("Linha em destaque: a visão escolhida nos filtros.")
 
 
 def aba_coordenadores():

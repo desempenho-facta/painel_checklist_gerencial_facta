@@ -6,12 +6,16 @@ Monitoria nem a visão de outros perfis.
     app_monitoria.py    visão da rede, todas as telas
     app_regional.py     visão de regional
     app_coordenador.py  visão de coordenador
+
+O menu das telas fica no topo e os filtros logo abaixo do cabeçalho, para
+funcionar bem também no celular.
 """
 
 import streamlit as st
 
+from . import regras as R
 from . import ui
-from .contexto import PERFIS, barra_lateral
+from .contexto import PERFIS, filtros
 
 
 def _p(arquivo, titulo, icone, default=False):
@@ -38,8 +42,14 @@ def paginas_do_perfil(perfil: str) -> dict:
 
 
 def rodar(perfil: str):
-    st.set_page_config(page_title=f"Checklist Gerencial · {PERFIS[perfil]['titulo']}", page_icon="✅", layout="wide")
+    st.set_page_config(page_title=f"Checklist Gerencial · {PERFIS[perfil]['titulo']}", page_icon=ui.caminho_icone(),
+                       layout="wide", initial_sidebar_state="collapsed")
     ui.aplicar_estilo()
-    pg = st.navigation(paginas_do_perfil(perfil))
-    st.session_state["ctx"] = barra_lateral(perfil)
+    st.logo(ui.caminho_icone(), size="large")
+    pg = st.navigation(paginas_do_perfil(perfil), position="top")
+    cabecalho = st.container()
+    ctx = filtros(perfil)
+    st.session_state["ctx"] = ctx
+    with cabecalho:
+        ui.topo(pg.title, f"{ctx.rotulo_visao} · {R.rotulo_mes(ctx.comp)}")
     pg.run()
