@@ -174,9 +174,9 @@ def test_coordenador_do_mes():
 
 
 def test_alias_de_coordenador(monkeypatch):
-    monkeypatch.setattr(C, "ALIAS_COORDENADOR", {"JIANINI MARIN": "JIANINI DA SILVA MARIN"})
-    r, _, _ = preparar([resposta("2026-05-05 10:00:00", "1", coord="Jianini  Marin")], [loja("1")])
-    assert r.loc[0, "COORDENADOR"] == "JIANINI DA SILVA MARIN"
+    monkeypatch.setattr(C, "ALIAS_COORDENADOR", {"PAULA LIMA": "PAULA DA SILVA LIMA"})
+    r, _, _ = preparar([resposta("2026-05-05 10:00:00", "1", coord="Paula  Lima")], [loja("1")])
+    assert r.loc[0, "COORDENADOR"] == "PAULA DA SILVA LIMA"
 
 
 # --------------------------------------------------------------------------- ranking
@@ -234,11 +234,11 @@ def test_regional_do_mes_segue_a_mesma_regra():
 
 # --------------------------------------------------------------------------- coordenador como supervisor
 @pytest.mark.parametrize("sup, coord, esperado", [
-    ("NAYRA BASTOS DA SILVA", "NAYRA BASTOS DA SILVA", True),
-    ("NAYRA SILVA", "NAYRA BASTOS DA SILVA", True),
-    ("JULIE", "JULIE BARBOSA", False),                       # só o primeiro nome não basta
-    ("ANA CAROLINA CRISTINA BAUER", "ANA PAULA PICOLLI", False),
-    ("ROSELY RAMALHO", "ROSELY RAMALHO DA SILVA DIAS", True),
+    ("CARLA BASTOS DA SILVA", "CARLA BASTOS DA SILVA", True),
+    ("CARLA SILVA", "CARLA BASTOS DA SILVA", True),
+    ("BRUNA", "BRUNA BARBOSA", False),                       # só o primeiro nome não basta
+    ("ANA CAROLINA MOURA", "ANA PAULA REIS", False),
+    ("TANIA RAMOS", "TANIA RAMOS DA SILVA DIAS", True),
     ("MARIA DA SILVA", "MARIA DE SOUZA", False),             # partícula não conta como sobrenome
 ])
 def test_supervisor_e_coordenador(sup, coord, esperado):
@@ -246,8 +246,8 @@ def test_supervisor_e_coordenador(sup, coord, esperado):
 
 
 def test_coordenador_como_supervisor_sai_do_score():
-    r = R.preparar_respostas(pd.DataFrame([resposta("2026-09-16 10:00:00", "1", coord="ROSELY RAMALHO DA SILVA DIAS",
-                                                    sup="Rosely Ramalho da Silva Dias")]))
+    r = R.preparar_respostas(pd.DataFrame([resposta("2026-09-16 10:00:00", "1", coord="TANIA RAMOS DA SILVA DIAS",
+                                                    sup="Tania Ramos da Silva Dias")]))
     assert bool(r.loc[0, "supervisao_especial"]) and r.loc[0, "tipo_especial"] == "Coordenador como supervisor"
 
 

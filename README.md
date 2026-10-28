@@ -21,12 +21,13 @@ Leituras: Pontos de atenção, O treino está funcionando?, Risco e estrutura, C
 Rede: Ranking, Controle de férias (só Monitoria e Regionais).
 
 Na barra lateral escolhe o mês e a visão (Rede, Regional ou Coordenador).
-Também dá para abrir direto por link: `?visao=coordenador&nome=JIANINI%20DA%20SILVA%20MARIN&mes=2026-09`
+Também dá para abrir direto por link: `?visao=coordenador&nome=NOME%20DO%20COORDENADOR&mes=2026-09`
 
 ## Regras
 
 Todas as regras de negócio estão em `core/regras.py` e os parâmetros (pesos, limiares, K do ranking,
-textos de ajuda, apelidos de coordenador, casos de supervisão especial) em `core/config.py`.
+textos de ajuda) em `core/config.py`. O que tem nome real (apelidos de coordenador e casos antigos de
+supervisão especial) fica nos secrets, porque o repositório é público.
 A documentação completa das regras está no arquivo BASE_REGRAS_PAINEL_CHECKLIST.md.
 
 Principais pontos:

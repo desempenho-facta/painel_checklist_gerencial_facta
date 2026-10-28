@@ -41,8 +41,21 @@ def _ler_csv(pasta: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     return ler("Respostas.csv"), ler("Lojas.csv")
 
 
+def aplicar_secrets() -> None:
+    """Lê dos secrets os ajustes que têm nomes reais e por isso não ficam no código público."""
+    from . import config as C
+    try:
+        alias = st.secrets.get("ALIAS_COORDENADOR", {})
+        casos = st.secrets.get("SUPERVISAO_ESPECIAL_CASOS", [])
+    except Exception:          # sem secrets (testes ou arquivos locais)
+        return
+    C.ALIAS_COORDENADOR.update({str(k).upper(): str(v).upper() for k, v in dict(alias).items()})
+    C.SUPERVISAO_ESPECIAL_CASOS.update((str(c), str(d)) for c, d in casos)
+
+
 @st.cache_data(ttl=600, show_spinner="Carregando os preenchimentos...")
 def carregar() -> dict:
+    aplicar_secrets()
     pasta = os.environ.get("CHECKLIST_DADOS_DIR")
     if pasta:
         resp, lojas = _ler_csv(Path(pasta))

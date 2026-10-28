@@ -55,10 +55,9 @@ SUPERVISAO_ESPECIAL = {
 # supervisor: precisa bater o primeiro nome e pelo menos um sobrenome (regra de
 # regras.supervisor_e_coordenador). Só o primeiro nome não basta.
 #
-# Casos antigos, digitados à mão, que também contam como supervisão especial.
-# Formato: (COD_LOJAS, "AAAA-MM-DD" do preenchimento).
-# Pendente de validação do Wesley:
-#   ("600064", "2026-07-15")  Suzano: "MARCUS HENRIQUE AUSENTE"
+# Casos antigos, digitados à mão, validados um a um. Formato: (COD_LOJAS, "AAAA-MM-DD").
+# Ficam nos secrets (SUPERVISAO_ESPECIAL_CASOS = [["COD", "AAAA-MM-DD"], ...]),
+# porque o repositório é público. Ver dados.aplicar_secrets.
 SUPERVISAO_ESPECIAL_CASOS: set[tuple[str, str]] = set()
 
 # ---------------------------------------------------------------------------
@@ -77,13 +76,11 @@ SINAIS_GRAVES = {
 
 # ---------------------------------------------------------------------------
 # Nomes de coordenador que aparecem escritos de outro jeito nas respostas
-# antigas e são a mesma pessoa do cadastro atual (confirmado em 28/10/2026).
+# antigas e são a mesma pessoa do cadastro atual. Ficam nos secrets, na tabela
+# [ALIAS_COORDENADOR] ("NOME ANTIGO" = "NOME DO CADASTRO"), porque o repositório
+# é público. Ver dados.aplicar_secrets.
 # ---------------------------------------------------------------------------
-ALIAS_COORDENADOR = {
-    "ANA PICOLLI": "ANA PAULA PICOLLI",
-    "JIANINI MARIN": "JIANINI DA SILVA MARIN",
-    "MICHELE SANTOS": "MICHELE MARTINS DOS SANTOS",
-}
+ALIAS_COORDENADOR: dict[str, str] = {}
 
 # ---------------------------------------------------------------------------
 # Visual Facta

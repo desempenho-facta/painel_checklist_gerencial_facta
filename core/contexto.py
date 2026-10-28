@@ -108,7 +108,7 @@ def barra_lateral(perfil: str = "monitoria") -> Contexto:
         meses = [atual] + meses
     meses = [pd.Timestamp(m) for m in meses]
 
-    # Atalho por link: ?visao=coordenador&nome=JIANINI%20DA%20SILVA%20MARIN&mes=2026-08
+    # Atalho por link: ?visao=coordenador&nome=NOME%20DO%20COORDENADOR&mes=2026-08
     qp = st.query_params
     if "ctx_iniciado" not in st.session_state:
         st.session_state["ctx_iniciado"] = True
