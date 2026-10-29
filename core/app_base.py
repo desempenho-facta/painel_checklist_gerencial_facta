@@ -12,6 +12,7 @@ funcionar bem também no celular.
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from . import regras as R
 from . import ui
@@ -41,6 +42,24 @@ def paginas_do_perfil(perfil: str) -> dict:
     return {"Painel": painel, "Leituras": leituras, "Rede": rede}
 
 
+_FECHA_MENU_CELULAR = """
+<script>
+// fx-fecha-menu: no celular o menu das telas vira uma aba lateral. Depois de trocar de tela, ela fecha sozinha.
+const doc = window.parent.document;
+if (window.parent.innerWidth < 768) {
+  const aberto = doc.querySelector('[data-testid="stSidebar"][data-collapsed="false"]');
+  const botao = aberto && aberto.querySelector('[data-testid="stBaseButton-headerNoPadding"]');
+  if (aberto && botao) botao.click();
+}
+</script>
+"""
+
+
+def _fechar_menu_no_celular(pagina: str):
+    # A página entra no HTML para o componente ser recriado a cada troca de tela.
+    components.html(_FECHA_MENU_CELULAR + f"<!-- {pagina} -->", height=0)
+
+
 def rodar(perfil: str):
     st.set_page_config(page_title=f"Checklist Gerencial · {PERFIS[perfil]['titulo']}", page_icon=ui.caminho_icone(),
                        layout="wide", initial_sidebar_state="collapsed")
@@ -52,4 +71,5 @@ def rodar(perfil: str):
     st.session_state["ctx"] = ctx
     with cabecalho:
         ui.topo(pg.title, f"{ctx.rotulo_visao} · {R.rotulo_mes(ctx.comp)}")
+    _fechar_menu_no_celular(pg.title)
     pg.run()

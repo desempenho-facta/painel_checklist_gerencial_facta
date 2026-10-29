@@ -33,7 +33,6 @@ CSS = f"""
 html, body, .stMarkdown, .stMarkdown *, button p, input, textarea, label p {{ font-family: 'Roboto', sans-serif; }}
 [data-testid="stIconMaterial"], .material-symbols-rounded {{ font-family: 'Material Symbols Rounded' !important; }}
 .block-container {{ padding-top: 4.2rem; padding-bottom: 2.5rem; max-width: 1440px; }}
-[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] {{ display: none; }}
 
 /* Cabeçalho */
 .fx-topo {{ background:{C.COR_NAVY}; border-radius:12px; padding:12px 22px; margin-bottom:12px; position:relative;
@@ -77,6 +76,9 @@ html, body, .stMarkdown, .stMarkdown *, button p, input, textarea, label p {{ fo
 .st-key-fx_filtros [data-testid="stHorizontalBlock"] {{ flex-wrap:wrap; row-gap:.6rem; }}
 .st-key-fx_filtros [data-testid="stColumn"] {{ flex:1 1 220px !important; min-width:220px !important; }}
 .st-key-fx_filtros [data-testid="stColumn"]:nth-child(2):nth-last-child(3) {{ flex-basis:300px !important; min-width:300px !important; }}
+
+/* Componente invisível que fecha o menu no celular */
+[data-testid="stElementContainer"]:has(iframe[srcdoc*="fx-fecha-menu"]) {{ display:none; }}
 
 /* Menu do topo */
 [data-testid="stTopNavLinkContainer"] a span, [data-testid="stNavSectionHeader"] {{ font-weight:500; }}
@@ -182,11 +184,15 @@ LAYOUT_GRAFICO = dict(
     hoverlabel=dict(bgcolor="#1f1e1e", bordercolor="#555", font=dict(color="#f2f2f2", size=12, family="Roboto, Arial, sans-serif"), align="left"),
 )
 
-CONFIG_GRAFICO = {"displayModeBar": False, "responsive": True}
+CONFIG_GRAFICO = {"displayModeBar": False, "responsive": True, "scrollZoom": False, "doubleClick": False,
+                  "showAxisDragHandles": False}
 
 
 def grafico(fig):
-    """Mostra um gráfico Plotly sem a barra de ferramentas, ocupando a largura disponível."""
+    """Mostra um gráfico Plotly fixo (sem zoom, sem arrastar e sem barra de ferramentas), mantendo os tooltips."""
+    fig.update_layout(dragmode=False)
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
     st.plotly_chart(fig, use_container_width=True, config=CONFIG_GRAFICO)
 
 

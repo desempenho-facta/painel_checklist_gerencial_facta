@@ -75,7 +75,7 @@ São 39 testes cobrindo pesos, score, maturidade, risco, estrutura, último pree
 
 ## Publicar
 
-1. Repositório privado no GitHub: painel_checklist_gerencial_facta.
+1. Repositório público no GitHub: desempenho-facta/painel_checklist_gerencial_facta (sem dados nem nomes reais; o que é sensível fica nos secrets).
 2. No Streamlit Community Cloud, cada app é um deploy do mesmo repositório apontando para o seu arquivo
    (`app_monitoria.py`, `app_regional.py`, `app_coordenador.py`), com o mesmo conteúdo de secrets.
 3. Limite do plano gratuito: cada workspace só pode ter um app privado por vez. Para os três ficarem
