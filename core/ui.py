@@ -74,6 +74,9 @@ html, body, .stMarkdown, .stMarkdown *, button p, input, textarea, label p {{ fo
 
 /* Filtros do cabeçalho */
 .fx-filtros-info {{ font-size:12px; color:#9a9a9a; padding-top:30px; }}
+.st-key-fx_filtros [data-testid="stHorizontalBlock"] {{ flex-wrap:wrap; row-gap:.6rem; }}
+.st-key-fx_filtros [data-testid="stColumn"] {{ flex:1 1 220px !important; min-width:220px !important; }}
+.st-key-fx_filtros [data-testid="stColumn"]:nth-child(2):nth-last-child(3) {{ flex-basis:300px !important; min-width:300px !important; }}
 
 /* Menu do topo */
 [data-testid="stTopNavLinkContainer"] a span, [data-testid="stNavSectionHeader"] {{ font-weight:500; }}

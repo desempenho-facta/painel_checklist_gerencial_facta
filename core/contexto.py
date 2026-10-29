@@ -124,7 +124,7 @@ def filtros(perfil: str = "monitoria") -> Contexto:
 
     varias_visoes = len(cfg["niveis"]) > 1
     larguras = [1.1, 1.5, 2.2, 1.2] if varias_visoes else [1.1, 2.6, 1.2]
-    cols = st.columns(larguras, vertical_alignment="bottom")
+    cols = st.container(key="fx_filtros").columns(larguras, vertical_alignment="bottom")
     with cols[0]:
         comp = st.selectbox("Período", meses, format_func=regras.rotulo_mes, key="ctx_comp")
     if varias_visoes:
