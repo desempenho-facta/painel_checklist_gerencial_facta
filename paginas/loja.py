@@ -37,9 +37,11 @@ rede_mes = val[(val["competencia"] == p["competencia"]) & ~val["supervisao_espec
 rede_blocos = {bl: rede_mes[f"pct_{bl}"].mean() for bl in C.BLOCOS} if len(rede_mes) else None
 grave_df = R.casos_graves(hist, p["competencia"])
 grave = grave_df.iloc[0] if len(grave_df) else None
+chamados = R.chamados_q36(ate_mes.iloc[[-1]])
 
 with b:
-    pdf = relatorio.gerar_pdf(rotulos[cod], p, R.historico_loja(ate_mes, cod), grave, rede_blocos, ctx.rotulo_visao)
+    pdf = relatorio.gerar_pdf(rotulos[cod], p, R.historico_loja(ate_mes, cod), grave, rede_blocos, ctx.rotulo_visao,
+                               chamados)
     st.download_button("Baixar relatório (PDF)", pdf, file_name=f"diagnostico_{cod}_{p['competencia']:%Y_%m}.pdf",
                        mime="application/pdf", use_container_width=True, type="primary",
                        help="Relatório da loja com situação do mês, pontos de melhoria, histórico e respostas.")
@@ -99,6 +101,18 @@ with dir_:
              sub="chamados de estrutura", cor=ui.VERDE_CLARO if p["estrutura"] == "Com chamados abertos" else ui.VERMELHO_CLARO,
              ajuda=C.AJUDA["estrutura"]),
     ], minimo=180)
+
+if len(chamados):
+    st.markdown(f"**Chamados de estrutura informados** ({len(chamados)})", help=C.AJUDA["sla"])
+    st.dataframe(pd.DataFrame({
+        "Motivo": chamados["motivo"].str.capitalize(), "Chamado": chamados["chamado"],
+        "Aberto em": chamados["abertura"].dt.strftime("%d/%m/%Y").fillna(""),
+        "Dias em aberto": chamados["dias_aberto"].map(lambda v: "" if pd.isna(v) else str(int(v))),
+        "Prazo (dias)": chamados["sla"].map(lambda v: "sem prazo" if pd.isna(v) else str(int(v))),
+        "Situação": chamados["situacao_sla"],
+    }), hide_index=True, use_container_width=True, column_config={"Motivo": st.column_config.TextColumn(width=240)})
+    if chamados["detalhe"].iloc[0]:
+        st.caption(f"Detalhe: {chamados['detalhe'].iloc[0].capitalize()}")
 
 # Pontos de melhoria: perguntas com Não, por bloco
 naos = [(bl, q) for bl, b_ in C.BLOCOS.items() for q in b_["perguntas"] if p[q] == "Não"]

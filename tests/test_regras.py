@@ -296,3 +296,30 @@ def test_ausencias():
     assert a.loc["C1", "situacao_hoje"] == "Férias"
     assert a.loc["C2", "situacao_hoje"] == "Vaga aberta"
     assert a.loc["C3", "situacao_hoje"] == "Ativo" and a.loc["C3", "dias_ate_proxima"] == 14
+
+
+# ---------------------------------------------------------------------------
+# Chamados da Q36 e prazo do SLA
+# ---------------------------------------------------------------------------
+def test_chamados_q36_prazo_do_sla():
+    base = {"timestamp": "2026-11-10 10:00:00", "REGIONAL": "R", "COORDENADOR": "C", "LOJA": "1 - LOJA A - RS",
+            "SUPERVISOR": "PAULA LIMA", "COD_LOJAS": "1"}
+    linha = {**base, **{q: "Sim" for q in C.PERGUNTAS},
+             C.COL_Q36_MOTIVOS: "SERVIÇO DE INFORMÁTICA | MANUTENÇÃO HIDRÁULICA | SERVIÇOS DE REFORMA",
+             C.COL_Q36_CHAMADOS: "1001 | 1002 | 1003",
+             C.COL_Q36_ABERTURA: "2026-11-01 | 2026-11-05 | 2026-10-01",
+             C.COL_Q36_OBS: "TESTE"}
+    antiga = {**base, "timestamp": "2026-10-10 10:00:00", **{q: "Sim" for q in C.PERGUNTAS}}
+    val = R.validos(R.preparar_respostas(pd.DataFrame([linha, antiga])))
+    ch = R.chamados_q36(val)
+    assert list(ch["chamado"]) == ["1001", "1002", "1003"]
+    assert list(ch["dias_aberto"]) == [9, 5, 40]
+    assert list(ch["situacao_sla"]) == ["Fora do prazo", "Dentro do prazo", "Sem prazo definido"]
+    assert (ch["detalhe"] == "TESTE").all()
+
+
+def test_chamados_q36_sem_colunas_novas():
+    base = {"timestamp": "2026-10-10 10:00:00", "REGIONAL": "R", "COORDENADOR": "C", "LOJA": "1 - LOJA A - RS",
+            "SUPERVISOR": "PAULA LIMA", "COD_LOJAS": "1", **{q: "Sim" for q in C.PERGUNTAS}}
+    val = R.validos(R.preparar_respostas(pd.DataFrame([base])))
+    assert R.chamados_q36(val).empty

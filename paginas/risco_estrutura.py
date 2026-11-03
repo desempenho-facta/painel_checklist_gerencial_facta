@@ -4,6 +4,7 @@ import streamlit as st
 
 from core import config as C
 from core import dados
+from core import regras as R
 from core import ui
 
 ctx = st.session_state["ctx"]
@@ -82,3 +83,78 @@ with alvo:
                      column_config={"Loja": st.column_config.TextColumn(width=250)})
     else:
         st.success("Todas as lojas desta visão estão com os chamados de estrutura abertos.")
+
+# ---------------------------------------------------------------------------
+# Chamados informados na Q36 (motivo, número, abertura e prazo do SLA)
+# ---------------------------------------------------------------------------
+st.divider()
+st.markdown("#### Chamados de estrutura informados", help=C.AJUDA["sla"])
+vm = d["validos"][(d["validos"]["competencia"] == ctx.comp) & d["validos"]["COD_LOJAS"].isin(set(pre["COD_LOJAS"]))]
+ch = R.chamados_q36(vm)
+if ch.empty:
+    st.info("Nenhum chamado informado neste mês para esta visão. O detalhamento da Q36 (motivo, número e data de "
+            "abertura) vale para os preenchimentos feitos a partir de novembro de 2026.")
+else:
+    fora = ch[ch["situacao_sla"] == "Fora do prazo"]
+    ui.cards([
+        dict(numero=len(ch), rotulo="Chamados informados", sub=f"em {ch['COD_LOJAS'].nunique()} lojas"),
+        dict(numero=len(fora), rotulo="Fora do prazo do SLA", sub=f"{ui.pct(len(fora) / len(ch), 0)} dos chamados",
+             cor=ui.VERMELHO_CLARO if len(fora) else ui.VERDE_CLARO, ajuda=C.AJUDA["sla"]),
+        dict(numero=int((ch["situacao_sla"] == "Dentro do prazo").sum()), rotulo="Dentro do prazo",
+             sub="ainda no tempo do SLA", cor=ui.VERDE_CLARO),
+        dict(numero=f"{int(ch['dias_aberto'].max())} dias" if ch["dias_aberto"].notna().any() else "sem dado",
+             rotulo="Chamado mais antigo", sub="da abertura até o preenchimento", cor=C.COR_AMBAR),
+    ], minimo=170)
+
+    a, b = st.columns([1.1, 1], gap="large")
+    with a:
+        st.markdown("**Chamados por motivo**")
+        ordem = ch["motivo"].value_counts().index.tolist()
+        cores = {"Fora do prazo": C.COR_VERMELHO, "Dentro do prazo": C.COR_VERDE, "Sem prazo definido": "#7a7a7a"}  # ordem da legenda
+        fig = go.Figure()
+        for sit, cor in cores.items():
+            parte = ch[ch["situacao_sla"] == sit]
+            cont = parte["motivo"].value_counts().reindex(ordem).fillna(0).astype(int)
+            hover = [f"<b>{m.capitalize()}</b><br>{sit}: {n}<br>Prazo: "
+                     + (f"{C.SLA_FACILITIES.get(m)} dias" if C.SLA_FACILITIES.get(m) else "sem prazo fixo") + "<br><br>"
+                     + ui.lista_hover(sorted(parte.loc[parte["motivo"] == m, "LOJA"].unique()), limite=10)
+                     for m, n in cont.items()]
+            fig.add_trace(go.Bar(y=[m.capitalize() for m in ordem], x=cont.values, name=sit, orientation="h",
+                                 marker_color=cor, customdata=hover, hovertemplate="%{customdata}<extra></extra>"))
+        fig.update_layout(**{**ui.LAYOUT_GRAFICO, "showlegend": True}, barmode="stack",
+                          height=max(240, 36 * len(ordem) + 90), legend=dict(orientation="h", y=-0.18, traceorder="normal"),
+                          yaxis=dict(autorange="reversed"), xaxis=dict(gridcolor="#3a3838"))
+        ui.grafico(fig)
+    with b:
+        st.markdown("**O que mais aparece no detalhe**")
+        obs = vm.drop_duplicates("COD_LOJAS")[C.COL_Q36_OBS]
+        palavras = (obs.str.upper().map(R.sem_acento).str.replace(r"[^A-ZÀ-Ü ]", " ", regex=True).str.split().explode())
+        palavras = palavras[(palavras.str.len() >= 4) & ~palavras.isin(C.PALAVRAS_IGNORADAS_Q36)]
+        top = palavras.value_counts().head(10)
+        if top.empty:
+            st.caption("Sem detalhes escritos neste mês.")
+        else:
+            base_obs = vm.drop_duplicates("COD_LOJAS")
+            hover = [f"<b>{w.capitalize()}: {n} lojas</b><br>"
+                     + ui.lista_hover(sorted(base_obs.loc[base_obs[C.COL_Q36_OBS].str.upper().map(R.sem_acento).str.contains(rf"\b{w}\b", regex=True), "LOJA"]), limite=10)
+                     for w, n in top.items()]
+            ui.grafico(ui.barras_h(top.values, [w.capitalize() for w in top.index], C.COR_AZUL,
+                                   altura=60 + 30 * len(top), hover=hover))
+            st.caption("Palavras que mais se repetem nos detalhes da Q36, sem as palavras comuns (loja, para, está...). "
+                       "Passe o mouse para ver as lojas.")
+
+    st.markdown("**Lista de chamados** (os fora do prazo primeiro)")
+    ordem_sit = {"Fora do prazo": 0, "Dentro do prazo": 1, "Sem prazo definido": 2}
+    t = ch.assign(_o=ch["situacao_sla"].map(ordem_sit)).sort_values(["_o", "dias_aberto"], ascending=[True, False])
+    tab = pd.DataFrame({
+        "Loja": t["LOJA"], "Motivo": t["motivo"].str.capitalize(), "Chamado": t["chamado"],
+        "Aberto em": t["abertura"].dt.strftime("%d/%m/%Y").fillna(""),
+        "Dias em aberto": t["dias_aberto"].map(lambda v: "" if pd.isna(v) else str(int(v))),
+        "Prazo (dias)": t["sla"].map(lambda v: "sem prazo" if pd.isna(v) else str(int(v))),
+        "Situação": t["situacao_sla"], "Detalhe": t["detalhe"].str.capitalize(),
+    })
+    st.dataframe(ui.estilo_tabela(tab, {"Situação": {"Fora do prazo": C.COR_VERMELHO, "Dentro do prazo": C.COR_VERDE}}),
+                 hide_index=True, use_container_width=True, height=min(38 * (len(tab) + 1), 560),
+                 column_config={"Loja": st.column_config.TextColumn(width=240),
+                                "Motivo": st.column_config.TextColumn(width=220),
+                                "Detalhe": st.column_config.TextColumn(width=360)})

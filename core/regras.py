@@ -98,6 +98,11 @@ def preparar_respostas(respostas: pd.DataFrame) -> pd.DataFrame:
             df[q] = ""
         df[q] = df[q].fillna("").astype(str).str.strip()
 
+    for col in C.COLUNAS_Q36:          # colunas novas: preenchimentos antigos ficam em branco
+        if col not in df.columns:
+            df[col] = ""
+        df[col] = df[col].fillna("").astype(str).str.strip()
+
     sim = df[C.PERGUNTAS].eq("Sim")
     nao = df[C.PERGUNTAS].eq("Não")
 
@@ -152,6 +157,38 @@ def preparar_respostas(respostas: pd.DataFrame) -> pd.DataFrame:
 
 def validos(resp: pd.DataFrame) -> pd.DataFrame:
     return resp[resp["valido"]].copy()
+
+
+def _partes(txt: str) -> list[str]:
+    return [p.strip() for p in str(txt or "").split("|")] if str(txt or "").strip() else []
+
+
+def chamados_q36(val: pd.DataFrame) -> pd.DataFrame:
+    """Um chamado por linha, a partir das colunas da Q36 dos preenchimentos recebidos.
+
+    Os dias em aberto vão da data de abertura até a data do preenchimento. Fora do prazo:
+    dias em aberto maiores que o SLA do motivo. Sem prazo definido: motivo sem SLA fixo.
+    """
+    cols = ["COD_LOJAS", "LOJA", "competencia", "timestamp", "motivo", "chamado", "abertura",
+            "dias_aberto", "sla", "situacao_sla", "detalhe"]
+    linhas = []
+    base = val[val[C.PERGUNTA_ESTRUTURA].eq("Sim") & val[C.COL_Q36_CHAMADOS].ne("")] if len(val) else val
+    for r in base.itertuples(index=False):
+        motivos = _partes(getattr(r, C.COL_Q36_MOTIVOS))
+        numeros = _partes(getattr(r, C.COL_Q36_CHAMADOS))
+        datas = _partes(getattr(r, C.COL_Q36_ABERTURA))
+        for i, num in enumerate(numeros):
+            motivo = motivos[i] if i < len(motivos) else "OUTROS"
+            abertura = pd.to_datetime(datas[i], errors="coerce") if i < len(datas) else pd.NaT
+            dias = (r.timestamp.normalize() - abertura).days if pd.notna(abertura) else np.nan
+            sla = C.SLA_FACILITIES.get(motivo)
+            if sla is None or pd.isna(dias):
+                situacao = "Sem prazo definido"
+            else:
+                situacao = "Fora do prazo" if dias > sla else "Dentro do prazo"
+            linhas.append([r.COD_LOJAS, r.LOJA, r.competencia, r.timestamp, motivo, num, abertura,
+                           dias, sla, situacao, getattr(r, C.COL_Q36_OBS)])
+    return pd.DataFrame(linhas, columns=cols)
 
 
 # ---------------------------------------------------------------------------

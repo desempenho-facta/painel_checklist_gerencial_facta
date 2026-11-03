@@ -30,6 +30,44 @@ PERGUNTAS_RISCO = {"Q31": "inadimplência (1ª parcela débito)", "Q24": "pendê
 PERGUNTA_ESTRUTURA = "Q36"
 PERGUNTA_ASSIDUIDADE = "Q35"
 
+# Chamados de estrutura informados na Q36 (quando a resposta é Sim).
+# Cada chamado tem motivo, número e data de abertura; o detalhe é um texto só.
+# As três colunas de chamado guardam os valores na mesma ordem, separados por " | ".
+COL_Q36_MOTIVOS = "Q36_MOTIVOS"
+COL_Q36_CHAMADOS = "Q36_CHAMADOS"
+COL_Q36_ABERTURA = "Q36_ABERTURA"
+COL_Q36_OBS = "Q36_OBS"
+COLUNAS_Q36 = [COL_Q36_MOTIVOS, COL_Q36_CHAMADOS, COL_Q36_ABERTURA, COL_Q36_OBS]
+
+# Motivos e prazo de atendimento (dias corridos) da tabela "Ordem de Atendimentos e SLA" do Facilities.
+# None: sem prazo fixo (Reforma e Comunicação visual variam por UF; Outros não tem tabela).
+SLA_FACILITIES = {
+    "SERVIÇO DE INFORMÁTICA": 2,
+    "INFILTRAÇÃO PAREDES E TETO": 30,
+    "MANUTENÇÃO DE PORTAS": 10,
+    "MANUTENÇÃO HIDRÁULICA": 10,
+    "SERVIÇOS ELÉTRICOS": 20,
+    "MANUTENÇÃO DE JANELAS": 10,
+    "ROUBO / FURTO / ARROMBAMENTO": 5,
+    "MANUTENÇÃO AR-CONDICIONADO": 15,
+    "MANUTENÇÃO BEBEDOURO / PURIFICADOR": 15,
+    "MANUTENÇÃO MÓVEIS E UTENSÍLIOS": 30,
+    "EXTINTOR: RECARGA": 30,
+    "EXTINTOR: NOVO": 30,
+    "DEDETIZAÇÃO": 20,
+    "SERVIÇOS DE REFORMA": None,
+    "COMUNICAÇÃO VISUAL": None,
+    "OUTROS": None,
+}
+
+# Palavras comuns que não entram na contagem do detalhe da Q36 (comparadas sem acento).
+PALAVRAS_IGNORADAS_Q36 = set("""
+LOJA LOJAS PARA COMO ESTA ESTAO ESTAVA FOIS FORAM SERA DESDE AINDA MUITO MUITA MAIS MENOS ESSE ESSA ESTE ESTA ISSO
+AQUI ONDE QUANDO PORQUE PELO PELA PELOS PELAS NOSSO NOSSA DELE DELA SOBRE ENTRE APOS ANTES DEPOIS TODOS TODAS TODO
+TODA CHAMADO CHAMADOS ABERTO ABERTOS ABERTA ABERTAS AGUARDANDO SOLUCAO PROXIMO PROXIMA LADO SALA PRECISA FAZER
+TAMBEM NADA TUDO COMO SENDO TENDO TINHA TEMOS TERA
+""".split())
+
 # ---------------------------------------------------------------------------
 # Faixas e limiares
 # ---------------------------------------------------------------------------
@@ -119,6 +157,8 @@ AJUDA = {
              "0 Sem risco, 1 Atenção, 2 Risco alto, 3 Risco crítico.",
     "estrutura": "Q36. Com chamados abertos é bom: o problema de estrutura foi registrado. "
                  "Sem chamados abertos é alerta.",
+    "sla": "Prazo de atendimento da tabela de SLA do Facilities, contado em dias corridos da abertura do chamado "
+           "até a data do preenchimento do checklist. Reforma, Comunicação visual e Outros não têm prazo fixo.",
     "cobertura": "Lojas que preencheram no mês dividido pela carteira do mês. "
                  "Lojas com supervisão especial ficam fora da conta.",
     "cobertura_ajustada": "Cobertura corrigida pelo tamanho da carteira (K = 3): carteiras pequenas são puxadas "

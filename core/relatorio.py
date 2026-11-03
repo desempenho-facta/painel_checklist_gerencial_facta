@@ -74,7 +74,7 @@ def _barras_blocos(p: pd.Series, rede: dict | None) -> Drawing:
 
 
 def gerar_pdf(loja: str, p: pd.Series, historico: pd.DataFrame, grave: pd.Series | None,
-              rede_blocos: dict | None, visao: str) -> bytes:
+              rede_blocos: dict | None, visao: str, chamados: pd.DataFrame | None = None) -> bytes:
     """p: preenchimento usado no diagnóstico (linha de validos). historico: R.historico_loja."""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=14 * mm,
@@ -143,6 +143,26 @@ def gerar_pdf(loja: str, p: pd.Series, historico: pd.DataFrame, grave: pd.Series
         h.append(t)
     else:
         h.append(Paragraph("Nenhuma pergunta com Não neste preenchimento.", TEXTO))
+
+    if chamados is not None and len(chamados):
+        h.append(Paragraph("Chamados de estrutura informados (Q36)", SECAO))
+        cab_c = ["Motivo", "Chamado", "Aberto em", "Dias", "Prazo", "Situação"]
+        linhas_c = [[r["motivo"].capitalize(), r["chamado"],
+                     "" if pd.isna(r["abertura"]) else f"{r['abertura']:%d/%m/%Y}",
+                     "" if pd.isna(r["dias_aberto"]) else str(int(r["dias_aberto"])),
+                     "sem prazo" if pd.isna(r["sla"]) else f"{int(r['sla'])} dias", r["situacao_sla"]]
+                    for _, r in chamados.iterrows()]
+        t = Table([[Paragraph(f'<font color="white"><b>{c}</b></font>', CELH) for c in cab_c]]
+                  + [[Paragraph(esc(str(c)), CELH) for c in l] for l in linhas_c],
+                  colWidths=[52 * mm, 26 * mm, 22 * mm, 14 * mm, 20 * mm, 40 * mm], repeatRows=1)
+        estilo = [("BACKGROUND", (0, 0), (-1, 0), NAVY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                  ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f4f4")])]
+        estilo += [("TEXTCOLOR", (5, i + 1), (5, i + 1), VERMELHO) for i, l in enumerate(linhas_c) if l[5] == "Fora do prazo"]
+        t.setStyle(TableStyle(estilo))
+        h.append(t)
+        detalhe = str(chamados["detalhe"].iloc[0] or "").strip()
+        if detalhe:
+            h += [Spacer(1, 3), Paragraph(f"<b>Detalhe:</b> {esc(detalhe.capitalize())}", TEXTO)]
 
     h.append(Paragraph("Histórico da loja", SECAO))
     cab_h = ["Mês", "Data", "Score", "Maturidade", "Risco", "Ciclo", "Estrutura", "Sup. esp."]
