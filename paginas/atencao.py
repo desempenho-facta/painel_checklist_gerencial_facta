@@ -23,7 +23,8 @@ if por_bloco["respondidas"].sum() == 0:
     st.stop()
 
 n_lojas = int(por_perg["respondidas"].max())
-ui.faixa(f"<b>{n_lojas} lojas</b> que contam no mês. Só as perguntas de 1 a 36, sem as lojas com supervisão especial."
+ui.faixa(f"<b>{n_lojas} lojas</b> que contam no mês. Só as perguntas de 1 a 36, sem as lojas com supervisão especial. "
+         "Conta como Não: Não, Nunca e Às vezes."
          + (" Passe o mouse para comparar com a rede." if ctx.nivel != "rede" else ""), pin="Base")
 
 ALTURA = 440

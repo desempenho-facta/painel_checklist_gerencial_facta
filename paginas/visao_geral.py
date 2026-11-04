@@ -16,6 +16,10 @@ texto = f"<b>{R.aviso_mes(rk_coord, ctx.comp, ctx.hoje.date())}</b>"
 if ctx.eh_mes_corrente:
     texto += f" · {R.texto_prazo(ctx.hoje.date())}"
 ui.faixa(texto, pin=R.rotulo_mes(ctx.comp))
+if R.em_transicao(ctx.comp):
+    ui.destaque("<b>Escala nova a partir de novembro de 2026.</b> Q1 a Q35 passaram de Sim ou Não para Nunca, Às vezes, "
+                "Quase sempre e Sempre, então o score fica mais preciso e tende a cair um pouco. As faixas de maturidade "
+                "(40 e 70) serão revistas depois dos dois primeiros meses.")
 
 comp_rede = R.comparacao_rede(ind["score"], rede["score"]) if ctx.nivel != "rede" else ""
 ui.cards([

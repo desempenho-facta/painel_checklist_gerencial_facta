@@ -129,13 +129,14 @@ def gerar_pdf(loja: str, p: pd.Series, historico: pd.DataFrame, grave: pd.Series
     h.append(Paragraph("Pontos de melhoria", SECAO))
     linhas = []
     for bloco, b in C.BLOCOS.items():
-        naos = [q for q in b["perguntas"] if p[q] == "Não"]
+        naos = [q for q in b["perguntas"] if R.e_nao(p[q])]
         if naos:
-            perdeu = sum(C.PONTO_POR_SIM[q] for q in naos)
+            perdeu = b["peso"] * (1 - p[f"pct_{bloco}"])
             perdeu_txt = f"{perdeu:.1f}".replace(".", ",")
-            linhas.append([Paragraph(f"<b>{bloco}</b><br/><font size=7.5 color='#6b6b6b'>perdeu "
+            linhas.append([Paragraph(f"<b>{bloco}</b><br/><font size=7.5 color='#6b6b6b'>o bloco perdeu "
                                      f"{perdeu_txt} de {b['peso']} pontos</font>", CEL),
-                           Paragraph("<br/>".join(f"<b>{q}</b> {PERGUNTAS_TEXTO[q]}" for q in naos), CEL)])
+                           Paragraph("<br/>".join(f"<b>{q}</b> {PERGUNTAS_TEXTO[q]} <font color='{C.COR_RESPOSTA[p[q]]}'>"
+                                               f"<b>({p[q]})</b></font>" for q in naos), CEL)])
     if linhas:
         t = Table(linhas, colWidths=[38 * mm, 136 * mm])
         t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#dddddd")),
@@ -188,10 +189,10 @@ def gerar_pdf(loja: str, p: pd.Series, historico: pd.DataFrame, grave: pd.Series
         resp.append([Paragraph(f'<font color="{C.COR_LARANJA}"><b>{bloco.upper()}</b></font>', CEL), "", ""])
         for q in b["perguntas"]:
             r = p[q] or "vazio"
-            cor = C.COR_VERDE if r == "Sim" else C.COR_VERMELHO if r == "Não" else "#6b6b6b"
+            cor = C.COR_RESPOSTA.get(r, "#6b6b6b")
             resp.append([Paragraph(f"<b>{q}</b>", CEL), Paragraph(PERGUNTAS_TEXTO[q], CEL),
                          Paragraph(f'<font color="{cor}"><b>{r}</b></font>', CEL)])
-    t = Table(resp, colWidths=[12 * mm, 146 * mm, 16 * mm])
+    t = Table(resp, colWidths=[12 * mm, 138 * mm, 24 * mm])
     t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, -1), 0.2, colors.HexColor("#e2e2e2"))]
                           + spans))
     h.append(t)

@@ -66,7 +66,7 @@ html, body, .stMarkdown, .stMarkdown *, button p, input, textarea, label p {{ fo
 .fx-resp {{ display:flex; gap:10px; align-items:flex-start; padding:7px 10px; border-bottom:1px solid #3a3838; font-size:13.5px; }}
 .fx-resp .q {{ color:#9a9a9a; min-width:38px; font-weight:700; }}
 .fx-resp .t {{ flex:1; color:#e8e8e8; }}
-.fx-resp .r {{ min-width:64px; text-align:center; font-weight:700; border-radius:4px; padding:2px 0; color:#fff; }}
+.fx-resp .r {{ min-width:100px; font-size:12.5px; text-align:center; font-weight:700; border-radius:4px; padding:2px 0; color:#fff; }}
 .fx-resp .p {{ min-width:54px; text-align:right; color:#9a9a9a; font-size:12px; }}
 .fx-sim {{ background:{C.COR_VERDE}; }} .fx-nao {{ background:{C.COR_VERMELHO}; }} .fx-vazio {{ background:#555; }}
 .fx-bloco {{ margin-top:12px; font-weight:800; color:{C.COR_LARANJA}; letter-spacing:.5px; font-size:13px; text-transform:uppercase; }}

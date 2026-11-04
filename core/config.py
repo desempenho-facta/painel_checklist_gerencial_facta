@@ -30,6 +30,20 @@ PERGUNTAS_RISCO = {"Q31": "inadimplência (1ª parcela débito)", "Q24": "pendê
 PERGUNTA_ESTRUTURA = "Q36"
 PERGUNTA_ASSIDUIDADE = "Q35"
 
+# ---------------------------------------------------------------------------
+# Escala de frequência (desde novembro de 2026). Q1 a Q35 usam 4 níveis sem meio;
+# a Q36 continua Sim ou Não. Preenchimentos antigos: Sim vale como Sempre e Não como Nunca.
+# Cada nível vale uma parte do ponto da pergunta; Nunca e Às vezes contam como Não
+# em % de Não, risco, assiduidade, casos graves e pontos de melhoria.
+# ---------------------------------------------------------------------------
+NIVEIS = ["Nunca", "Às vezes", "Quase sempre", "Sempre"]
+VALOR_RESPOSTA = {"Nunca": 0.0, "Às vezes": 1 / 3, "Quase sempre": 2 / 3, "Sempre": 1.0, "Sim": 1.0, "Não": 0.0}
+RESPOSTAS_NAO = {"Nunca", "Às vezes", "Não"}
+ESCALA_DESDE = "2026-11-01"
+COR_RESPOSTA = {"Sempre": "#2E7D32", "Sim": "#2E7D32", "Quase sempre": "#7CB342", "Às vezes": "#E07020",
+                "Nunca": "#C62828", "Não": "#C62828"}
+MESES_TRANSICAO = 2               # meses com aviso de transição nas faixas de maturidade
+
 # Chamados de estrutura informados na Q36 (quando a resposta é Sim).
 # Cada chamado tem motivo, número e data de abertura; o detalhe é um texto só.
 # As três colunas de chamado guardam os valores na mesma ordem, separados por " | ".
@@ -145,7 +159,8 @@ DEFINICAO_MATURIDADE = {
 }
 
 AJUDA = {
-    "score": "Pontuação de 0 a 100. Cada Sim soma o peso do bloco dividido pelo número de perguntas dele. "
+    "score": "Pontuação de 0 a 100. Cada pergunta vale o peso do bloco dividido pelo número de perguntas dele; "
+             "Sempre (ou Sim) soma o ponto inteiro, Quase sempre 2/3, Às vezes 1/3 e Nunca (ou Não) nada. "
              "Avaliar 12, Treinar 18, Domínio de Método 22, Incentivar 8, Verificar 12, Acompanhar 13, Operação 15.",
     "maturidade": "Reativa: score até 40. Em desenvolvimento: acima de 40 até 70. Madura: acima de 70.",
     "ciclo": "Ciclo fechado: Treinar, Verificar e Acompanhar com 60% ou mais. "
@@ -153,10 +168,13 @@ AJUDA = {
              "Exige sem preparar: verifica ou acompanha sem treinar. Ciclo frágil: os três abaixo de 60%.",
     "quadrante": "Cruza Treinar com Domínio de Método (60% ou mais = bom). "
                  "Treina e domina, Treino ineficaz, Talento natural ou Crítico.",
-    "risco": "Conta quantos Não a loja deu em Q31 (inadimplência), Q24 (pendências) e Q32 (portabilidade). "
+    "risco": "Conta quantas falhas (Não, Nunca ou Às vezes) a loja teve em Q31 (inadimplência), Q24 (pendências) e Q32 (portabilidade). "
              "0 Sem risco, 1 Atenção, 2 Risco alto, 3 Risco crítico.",
     "estrutura": "Q36. Com chamados abertos é bom: o problema de estrutura foi registrado. "
                  "Sem chamados abertos é alerta.",
+    "escala": "Desde novembro de 2026, Q1 a Q35 são respondidas em 4 níveis: Nunca (0), Às vezes (1/3), "
+              "Quase sempre (2/3) e Sempre (o ponto inteiro). Nunca e Às vezes contam como Não. "
+              "Nos meses anteriores, Sim vale como Sempre e Não como Nunca.",
     "sla": "Prazo de atendimento da tabela de SLA do Facilities, contado em dias corridos da abertura do chamado "
            "até a data do preenchimento do checklist. Reforma, Comunicação visual e Outros não têm prazo fixo.",
     "cobertura": "Lojas que preencheram no mês dividido pela carteira do mês. "

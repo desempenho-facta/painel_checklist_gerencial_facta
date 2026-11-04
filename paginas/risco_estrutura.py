@@ -18,7 +18,8 @@ if pre.empty:
     st.stop()
 
 st.markdown("#### Onde o dinheiro está escapando")
-st.caption("Nível de risco: quantos Não a loja deu em Q31 (inadimplência), Q24 (pendências) e Q32 (portabilidade).")
+st.caption("Nível de risco: quantas falhas a loja teve em Q31 (inadimplência), Q24 (pendências) e Q32 (portabilidade). "
+           "Falha é Não, Nunca ou Às vezes.")
 cont = pre["risco"].value_counts().reindex(list(ui.CORES_RISCO)).fillna(0).astype(int)
 ui.cards([dict(numero=int(cont[n]), rotulo=n, sub=f"{ui.pct(cont[n] / len(pre), 0)} das lojas",
                cor=ui.VERDE_CLARO if n == "Sem risco" else cor, ajuda=C.AJUDA["risco"])
@@ -26,7 +27,7 @@ ui.cards([dict(numero=int(cont[n]), rotulo=n, sub=f"{ui.pct(cont[n] / len(pre), 
 
 risco = pre[pre["falhas_criticas"] > 0].copy()
 for q, tema in C.PERGUNTAS_RISCO.items():
-    risco[tema.capitalize()] = risco["COD_LOJAS"].map(val_mes[q]).map({"Não": "Não", "Sim": "Sim"})
+    risco[tema.capitalize()] = risco["COD_LOJAS"].map(val_mes[q]).fillna("")
 risco = risco.sort_values("falhas_criticas", ascending=False)
 st.markdown("**Lojas com pelo menos uma falha crítica** (comece pelas de risco crítico)")
 if risco.empty:
@@ -36,7 +37,8 @@ else:
     tab = tab.rename(columns={"LOJA": "Loja", "coordenador_mes": "Coordenador", "risco": "Risco"})
     tab["Coordenador"] = tab["Coordenador"].str.title()
     st.dataframe(ui.estilo_tabela(tab, {"Risco": ui.CORES_RISCO,
-                                        **{t.capitalize(): {"Não": C.COR_VERMELHO} for t in C.PERGUNTAS_RISCO.values()}}),
+                                        **{t.capitalize(): {r: C.COR_VERMELHO for r in C.RESPOSTAS_NAO}
+                                           for t in C.PERGUNTAS_RISCO.values()}}),
                  hide_index=True, use_container_width=True,
                  column_config={"Loja": st.column_config.TextColumn(width=280), "Coordenador": st.column_config.TextColumn(width=240)})
 

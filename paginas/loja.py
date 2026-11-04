@@ -115,33 +115,40 @@ if len(chamados):
         st.caption(f"Detalhe: {chamados['detalhe'].iloc[0].capitalize()}")
 
 # Pontos de melhoria: perguntas com Não, por bloco
-naos = [(bl, q) for bl, b_ in C.BLOCOS.items() for q in b_["perguntas"] if p[q] == "Não"]
-st.markdown(f"**Pontos de melhoria** ({len(naos)} {'pergunta' if len(naos) == 1 else 'perguntas'} com Não)")
+naos = [(bl, q) for bl, b_ in C.BLOCOS.items() for q in b_["perguntas"] if R.e_nao(p[q])]
+st.markdown(f"**Pontos de melhoria** ({len(naos)} {'pergunta' if len(naos) == 1 else 'perguntas'} com Não)",
+            help="Lista as respostas Não, Nunca ou Às vezes. Os pontos perdidos são do bloco inteiro, "
+                 "contando também o que faltou nas respostas Quase sempre. " + C.AJUDA["escala"])
 if naos:
     partes = []
     for bl in C.BLOCOS:
         qs = [q for b2, q in naos if b2 == bl]
         if qs:
-            perdeu = sum(C.PONTO_POR_SIM[q] for q in qs)
-            partes.append(f'<div class="fx-bloco">{bl} · perdeu {ui.num(perdeu, 1)} de {C.BLOCOS[bl]["peso"]} pontos</div>')
+            perdeu = C.BLOCOS[bl]["peso"] * (1 - p[f"pct_{bl}"])
+            partes.append(f'<div class="fx-bloco">{bl} · o bloco perdeu {ui.num(perdeu, 1)} de {C.BLOCOS[bl]["peso"]} pontos'
+                          f'</div>')
             partes += [f'<div class="fx-resp"><div class="q">{q}</div><div class="t">{html.escape(PERGUNTAS_TEXTO[q])}</div>'
-                       f'<div class="r fx-nao">Não</div></div>' for q in qs]
+                       f'<div class="r" style="background:{C.COR_RESPOSTA[p[q]]}">{html.escape(p[q])}</div></div>'
+                       for q in qs]
     st.markdown("".join(partes), unsafe_allow_html=True)
 else:
     st.success("Nenhuma pergunta com Não neste preenchimento.")
 
 with st.expander("Ver as 36 respostas do preenchimento"):
+    if p["competencia"] >= pd.Timestamp(C.ESCALA_DESDE):
+        st.caption(C.AJUDA["escala"])
     partes = []
     for bloco, b_ in C.BLOCOS.items():
         ganho = b_["peso"] * p[f"pct_{bloco}"]
         partes.append(f'<div class="fx-bloco">{bloco} · {ui.num(ganho, 1)} de {b_["peso"]} pontos</div>')
         for q in b_["perguntas"]:
             r = p[q]
-            cls = "fx-sim" if r == "Sim" else "fx-nao" if r == "Não" else "fx-vazio"
-            pts = C.PONTO_POR_SIM[q] if r == "Sim" else 0
+            cor = C.COR_RESPOSTA.get(r, "#555")
+            pts = C.PONTO_POR_SIM[q] * R.credito(r)
             partes.append(
                 f'<div class="fx-resp"><div class="q">{q}</div><div class="t">{html.escape(PERGUNTAS_TEXTO[q])}</div>'
-                f'<div class="r {cls}">{html.escape(r or "vazio")}</div><div class="p">+{ui.num(pts, 2)}</div></div>')
+                f'<div class="r" style="background:{cor}">{html.escape(r or "vazio")}</div>'
+                f'<div class="p">+{ui.num(pts, 2)}</div></div>')
     st.markdown("".join(partes), unsafe_allow_html=True)
 
 g1, g2 = st.columns([1, 1.3], gap="large")

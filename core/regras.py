@@ -103,8 +103,9 @@ def preparar_respostas(respostas: pd.DataFrame) -> pd.DataFrame:
             df[col] = ""
         df[col] = df[col].fillna("").astype(str).str.strip()
 
-    sim = df[C.PERGUNTAS].eq("Sim")
-    nao = df[C.PERGUNTAS].eq("Não")
+    # Crédito de cada resposta (0 a 1): Sim/Não dos meses antigos e os 4 níveis da escala nova
+    sim = df[C.PERGUNTAS].apply(lambda col: col.map(C.VALOR_RESPOSTA)).fillna(0.0)
+    nao = df[C.PERGUNTAS].isin(C.RESPOSTAS_NAO)
 
     # Score: soma por bloco de peso x (Sim no bloco / perguntas do bloco)
     score = pd.Series(0.0, index=df.index)
@@ -136,7 +137,8 @@ def preparar_respostas(respostas: pd.DataFrame) -> pd.DataFrame:
     df["estrutura"] = np.where(df[C.PERGUNTA_ESTRUTURA].eq("Sim"), "Com chamados abertos", "Sem chamados abertos")
     df["avaliar_forca"] = np.where(df["pct_Avaliar"] >= C.LIMIAR_BLOCO, "Avalia bem", "Avalia pouco")
     df["incentivar_forca"] = np.where(df["pct_Incentivar"] >= C.LIMIAR_BLOCO, "Incentiva bem", "Incentiva pouco")
-    df["equipe_assidua"] = np.where(df[C.PERGUNTA_ASSIDUIDADE].eq("Sim"), "Equipe assídua", "Equipe não assídua")
+    df["equipe_assidua"] = np.where(df[C.PERGUNTA_ASSIDUIDADE].isin(C.RESPOSTAS_NAO), "Equipe não assídua",
+                                    "Equipe assídua")
 
     chave_sup = df["SUPERVISOR"].map(sem_acento)
     padrao = chave_sup.isin(C.SUPERVISAO_ESPECIAL)
@@ -153,6 +155,21 @@ def preparar_respostas(respostas: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values(["COD_LOJAS", "competencia", "timestamp", "_ordem"])
     df["valido"] = ~df.duplicated(["COD_LOJAS", "competencia"], keep="last")
     return df.sort_values("_ordem").reset_index(drop=True)
+
+
+def e_nao(resposta) -> bool:
+    """Nunca, Às vezes ou Não."""
+    return resposta in C.RESPOSTAS_NAO
+
+
+def credito(resposta) -> float:
+    return C.VALOR_RESPOSTA.get(resposta, 0.0)
+
+
+def em_transicao(comp) -> bool:
+    """Meses iniciais da escala nova, com aviso de que as faixas de maturidade serão revistas."""
+    ini = pd.Timestamp(C.ESCALA_DESDE)
+    return ini <= pd.Timestamp(comp) < ini + pd.DateOffset(months=C.MESES_TRANSICAO)
 
 
 def validos(resp: pd.DataFrame) -> pd.DataFrame:
@@ -323,9 +340,9 @@ def percentual_nao(val_mes: pd.DataFrame, cods: pd.Series) -> tuple[pd.DataFrame
     linhas = []
     for q in C.PERGUNTAS:
         resp = base[q]
-        respondidas = resp.isin(["Sim", "Não"]).sum()
+        respondidas = resp.isin(list(C.VALOR_RESPOSTA)).sum()
         linhas.append({"pergunta": q, "bloco": C.BLOCO_DA_PERGUNTA[q],
-                       "nao": int(resp.eq("Não").sum()), "respondidas": int(respondidas)})
+                       "nao": int(resp.isin(C.RESPOSTAS_NAO).sum()), "respondidas": int(respondidas)})
     por_pergunta = pd.DataFrame(linhas)
     por_pergunta["pct_nao"] = por_pergunta["nao"] / por_pergunta["respondidas"].replace(0, np.nan)
     por_bloco = por_pergunta.groupby("bloco", sort=False)[["nao", "respondidas"]].sum().reset_index()

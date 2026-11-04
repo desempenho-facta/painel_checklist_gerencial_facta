@@ -323,3 +323,40 @@ def test_chamados_q36_sem_colunas_novas():
             "SUPERVISOR": "PAULA LIMA", "COD_LOJAS": "1", **{q: "Sim" for q in C.PERGUNTAS}}
     val = R.validos(R.preparar_respostas(pd.DataFrame([base])))
     assert R.chamados_q36(val).empty
+
+
+# ---------------------------------------------------------------------------
+# Escala de frequência (Nunca, Às vezes, Quase sempre, Sempre)
+# ---------------------------------------------------------------------------
+def _linha_escala(nivel, **extra):
+    base = {"timestamp": "2026-11-10 10:00:00", "REGIONAL": "R", "COORDENADOR": "C", "LOJA": "1 - LOJA A - RS",
+            "SUPERVISOR": "PAULA LIMA", "COD_LOJAS": "1"}
+    return {**base, **{q: nivel for q in C.PERGUNTAS if q != "Q36"}, "Q36": "Sim", **extra}
+
+
+def test_escala_score_e_credito():
+    df = R.preparar_respostas(pd.DataFrame([_linha_escala("Sempre"), {**_linha_escala("Nunca"), "COD_LOJAS": "2"},
+                                            {**_linha_escala("Quase sempre"), "COD_LOJAS": "3"}]))
+    s = df.set_index("COD_LOJAS")["score"]
+    assert s["1"] == pytest.approx(100)
+    # Nunca em tudo, só a Q36 com Sim: vale 1/11 do bloco Operação (15 pontos)
+    assert s["2"] == pytest.approx(15 / 11)
+    # Quase sempre vale 2/3 em Q1..Q35; Q36 Sim vale inteiro
+    assert s["3"] == pytest.approx((100 - 15) * 2 / 3 + 15 * (10 * 2 / 3 + 1) / 11)
+
+
+def test_escala_nao_conta_nunca_e_as_vezes():
+    df = R.preparar_respostas(pd.DataFrame([_linha_escala("Às vezes"), {**_linha_escala("Quase sempre"), "COD_LOJAS": "2"}]))
+    d = df.set_index("COD_LOJAS")
+    assert d.loc["1", "falhas_criticas"] == 3 and d.loc["1", "risco"] == "Risco crítico"
+    assert d.loc["1", "equipe_assidua"] == "Equipe não assídua"
+    assert d.loc["2", "falhas_criticas"] == 0 and d.loc["2", "equipe_assidua"] == "Equipe assídua"
+    _, por_perg = R.percentual_nao(df.assign(supervisao_especial=False), df["COD_LOJAS"])
+    q1 = por_perg.set_index("pergunta").loc["Q1"]
+    assert q1["nao"] == 1 and q1["respondidas"] == 2
+
+
+def test_sim_nao_antigo_continua_igual():
+    assert R.credito("Sim") == 1 and R.credito("Não") == 0
+    assert R.e_nao("Não") and R.e_nao("Nunca") and R.e_nao("Às vezes") and not R.e_nao("Quase sempre")
+    assert R.em_transicao("2026-11-01") and R.em_transicao("2026-12-01") and not R.em_transicao("2027-01-01")
