@@ -3,7 +3,7 @@ Leitura dos dados do checklist.
 
 Produção: Google Sheets pela conta de serviço (gspread), lendo as colunas
 pelo nome do cabeçalho. Desenvolvimento: CSVs locais apontados pela
-variável de ambiente CHECKLIST_DADOS_DIR (Respostas.csv e Lojas.csv).
+variável de ambiente CHECKLIST_DADOS_DIR (Respostas.csv, Lojas.csv e Roteiro.csv).
 """
 
 from __future__ import annotations
@@ -14,10 +14,10 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from . import regras
+from . import regras, roteiro
 
 
-def _ler_planilha() -> tuple[pd.DataFrame, pd.DataFrame]:
+def _ler_planilha() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     import gspread
     from google.oauth2.service_account import Credentials
 
@@ -33,12 +33,18 @@ def _ler_planilha() -> tuple[pd.DataFrame, pd.DataFrame]:
     # Aceita o mesmo bloco de secrets do app do formulário (SHEET_ID, gcp_service_account, NOME_ABA).
     aba_resp = st.secrets.get("ABA_RESPOSTAS") or st.secrets.get("NOME_ABA") or "Respostas"
     aba_lojas = st.secrets.get("ABA_LOJAS") or "Hierarquia"
-    return aba(aba_resp), aba(aba_lojas)
+    aba_rot = st.secrets.get("ROTEIRO_ABA") or "Roteiro"
+    try:
+        rot = aba(aba_rot)
+    except Exception:            # sem a aba do roteiro, as telas dele ficam vazias e o resto segue
+        rot = pd.DataFrame()
+    return aba(aba_resp), aba(aba_lojas), rot
 
 
-def _ler_csv(pasta: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _ler_csv(pasta: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ler = lambda n: pd.read_csv(pasta / n, dtype=str, keep_default_na=False)
-    return ler("Respostas.csv"), ler("Lojas.csv")
+    rot = ler("Roteiro.csv") if (pasta / "Roteiro.csv").exists() else pd.DataFrame()
+    return ler("Respostas.csv"), ler("Lojas.csv"), rot
 
 
 def aplicar_secrets() -> None:
@@ -58,10 +64,10 @@ def carregar() -> dict:
     aplicar_secrets()
     pasta = os.environ.get("CHECKLIST_DADOS_DIR")
     if pasta:
-        resp, lojas = _ler_csv(Path(pasta))
+        resp, lojas, rot = _ler_csv(Path(pasta))
         origem = f"arquivos locais ({pasta})"
     else:
-        resp, lojas = _ler_planilha()
+        resp, lojas, rot = _ler_planilha()
         origem = "Google Sheets"
     respostas = regras.preparar_respostas(resp)
     lojas = regras.preparar_lojas(lojas)
@@ -69,6 +75,7 @@ def carregar() -> dict:
         "respostas": respostas,
         "validos": regras.validos(respostas),
         "lojas": lojas,
+        "roteiro": roteiro.preparar_roteiro(rot),
         "origem": origem,
         "carregado_em": pd.Timestamp.now(tz="America/Sao_Paulo"),
     }

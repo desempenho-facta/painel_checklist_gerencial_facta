@@ -36,10 +36,16 @@ def paginas_do_perfil(perfil: str) -> dict:
         _p("risco_estrutura", "Risco e estrutura", "report"),
         _p("casos_graves", "Casos graves", "crisis_alert"),
     ]
+    roteiro = [
+        _p("roteiro_adesao", "Adesão ao roteiro", "event_note"),
+        _p("roteiro_cobertura", "Cobertura de visitas", "where_to_vote"),
+        _p("roteiro_agenda", "Agenda da semana", "calendar_month"),
+        _p("roteiro_realizado", "Planejado x realizado", "rule"),
+    ]
     rede = [_p("ranking", "Ranking", "leaderboard")]
     if perfil in ("monitoria", "regional"):
         rede.append(_p("ferias", "Controle de férias", "event_busy"))
-    return {"Painel": painel, "Leituras": leituras, "Rede": rede}
+    return {"Painel": painel, "Leituras": leituras, "Roteiro": roteiro, "Rede": rede}
 
 
 _FECHA_MENU_CELULAR = """

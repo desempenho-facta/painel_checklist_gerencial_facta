@@ -18,6 +18,7 @@ então os três sempre mostram os mesmos números.
 
 Painel: Visão geral, Lojas, Diagnóstico da loja, Mês a mês.
 Leituras: Pontos de atenção, O treino está funcionando?, Risco e estrutura, Casos graves.
+Roteiro: Adesão ao roteiro, Cobertura de visitas, Agenda da semana, Planejado x realizado.
 Rede: Ranking, Controle de férias (só Monitoria e Regionais).
 
 O menu das telas fica no topo. Logo abaixo do cabeçalho ficam os filtros: mês, visão (Rede, Regional ou Coordenador) e nome.
@@ -40,6 +41,9 @@ Principais pontos:
 4. Ranking por cobertura ajustada: (preenchidas + 3 x média da rede) / (carteira + 3).
 5. Caso grave: preenchimento com Risco crítico, Reativa, Quadrante crítico, Treino ineficaz ou Ciclo frágil.
    O tempo conta os preenchimentos seguidos com sinal; mês sem preenchimento não zera.
+6. Roteiro de visitas (core/roteiro.py, aba Roteiro): vale a versão mais recente de cada semana. Meta de 2 dias
+   na loja por mês nas lojas de fácil acesso e 1 nas distantes (mais de 200 km em linha reta da base do
+   coordenador). Dia de BASE na loja conta como presença. O roteiro é indicado, não obrigatório.
 
 ## Rodar no computador
 
@@ -56,7 +60,7 @@ streamlit run app_regional.py
 streamlit run app_coordenador.py
 ```
 
-Com arquivos locais (teste): coloque `Respostas.csv` e `Lojas.csv` numa pasta e aponte a variável
+Com arquivos locais (teste): coloque `Respostas.csv`, `Lojas.csv` e `Roteiro.csv` (opcional) numa pasta e aponte a variável
 `CHECKLIST_DADOS_DIR` para ela antes de rodar. No Windows (PowerShell):
 
 ```
@@ -70,8 +74,8 @@ streamlit run app_monitoria.py
 pytest
 ```
 
-São 39 testes cobrindo pesos, score, maturidade, risco, estrutura, último preenchimento, supervisão especial
-(inclusive coordenador como supervisor), coordenador e regional do mês, ranking, casos graves e ausências.
+São 51 testes cobrindo pesos, score, maturidade, risco, estrutura, último preenchimento, supervisão especial
+(inclusive coordenador como supervisor), coordenador e regional do mês, ranking, casos graves, ausências e as regras do roteiro de visitas.
 
 ## Publicar
 
