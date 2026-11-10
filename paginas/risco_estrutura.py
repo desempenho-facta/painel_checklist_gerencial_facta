@@ -86,7 +86,7 @@ atuacao = A.atuais()
 def _colunas_atuacao(chaves: pd.Series) -> pd.DataFrame:
     reg = atuacao.reindex(chaves)
     return pd.DataFrame({"Atuado": reg["atuado"].fillna("").eq("Sim").values,
-                         "Status": reg["status"].replace("", None).values,
+                         "Status": reg["status"].fillna("").values,
                          "Observação": reg["observacao"].fillna("").values,
                          "Última atuação": (reg["responsavel"].fillna("") + reg["registrado_em"].fillna("").map(
                              lambda v: f" em {pd.Timestamp(v):%d/%m %H:%M}" if v else "")).str.strip().values})
@@ -104,14 +104,13 @@ def tabela_com_atuacao(tab: pd.DataFrame, chaves: pd.Series, extras: pd.DataFram
     conf["Loja"] = st.column_config.TextColumn(width=larguras.get("Loja", 240), pinned=True)
     altura = min(36 * (len(tab) + 1) + 4, 560)
     if not pode_atuar:
-        st.dataframe(ui.estilo_tabela(tab.assign(Atuado=tab["Atuado"].map({True: "Sim", False: ""}),
-                                                 Status=tab["Status"].fillna("")), cores),
+        st.dataframe(ui.estilo_tabela(tab.assign(Atuado=tab["Atuado"].map({True: "Sim", False: ""})), cores),
                      hide_index=True, use_container_width=True, height=altura, column_config=conf)
         return
     editaveis = ["Atuado", "Status", "Observação"]
     conf.update({
         "Atuado": st.column_config.CheckboxColumn("Atuado", width=70, help="Marque quando a monitoria atuar no item."),
-        "Status": st.column_config.SelectboxColumn("Status", options=C.STATUS_ATUACAO, width=120),
+        "Status": st.column_config.SelectboxColumn("Status", options=[""] + C.STATUS_ATUACAO, width=120),
         "Observação": st.column_config.TextColumn("Observação", width=260, max_chars=300),
     })
     with st.form(chave_form, border=False):
