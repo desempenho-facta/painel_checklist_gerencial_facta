@@ -74,7 +74,8 @@ def _barras_blocos(p: pd.Series, rede: dict | None) -> Drawing:
 
 
 def gerar_pdf(loja: str, p: pd.Series, historico: pd.DataFrame, grave: pd.Series | None,
-              rede_blocos: dict | None, visao: str, chamados: pd.DataFrame | None = None) -> bytes:
+              rede_blocos: dict | None, visao: str, chamados: pd.DataFrame | None = None,
+              demandas: pd.DataFrame | None = None) -> bytes:
     """p: preenchimento usado no diagnóstico (linha de validos). historico: R.historico_loja."""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=14 * mm,
@@ -102,7 +103,8 @@ def gerar_pdf(loja: str, p: pd.Series, historico: pd.DataFrame, grave: pd.Series
     cards = [card(f"{p['score']:.2f}".replace(".", ","), "Score (0 a 100)", _cor_score(p["score"])),
              card(p["maturidade"], "Maturidade"), card(p["risco"], "Nível de risco"),
              card(p["ciclo"], "Ciclo"), card(p["quadrante"], "Quadrante do treino"),
-             card("Com chamados" if p["estrutura"] == "Com chamados abertos" else "Sem chamados", "Estrutura (Q36)")]
+             card(p["estrutura"] or "Sem resposta", "Estrutura (Q36)",
+                  VERMELHO if p["estrutura"] == C.ESTRUTURA_SEM_CHAMADO else colors.black)]
     t = Table([[c[0] for c in cards], [c[1] for c in cards]], colWidths=[29 * mm] * 6)
     t.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
                            ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e5e5")),
@@ -147,29 +149,45 @@ def gerar_pdf(loja: str, p: pd.Series, historico: pd.DataFrame, grave: pd.Series
 
     if chamados is not None and len(chamados):
         h.append(Paragraph("Chamados de estrutura informados (Q36)", SECAO))
-        cab_c = ["Motivo", "Chamado", "Aberto em", "Dias", "Prazo", "Situação"]
+        unico = bool(chamados["detalhe_unico"].iloc[0])
+        cab_c = ["Motivo", "Chamado", "Aberto em", "Dias", "Prazo", "Situação"] + ([] if unico else ["Detalhe"])
         linhas_c = [[r["motivo"].capitalize(), r["chamado"],
                      "" if pd.isna(r["abertura"]) else f"{r['abertura']:%d/%m/%Y}",
                      "" if pd.isna(r["dias_aberto"]) else str(int(r["dias_aberto"])),
                      "sem prazo" if pd.isna(r["sla"]) else f"{int(r['sla'])} dias", r["situacao_sla"]]
+                    + ([] if unico else [str(r["detalhe"]).capitalize()])
                     for _, r in chamados.iterrows()]
+        larg = [52, 26, 22, 14, 20, 40] if unico else [38, 20, 19, 10, 16, 25, 46]
         t = Table([[Paragraph(f'<font color="white"><b>{c}</b></font>', CELH) for c in cab_c]]
                   + [[Paragraph(esc(str(c)), CELH) for c in l] for l in linhas_c],
-                  colWidths=[52 * mm, 26 * mm, 22 * mm, 14 * mm, 20 * mm, 40 * mm], repeatRows=1)
+                  colWidths=[w * mm for w in larg], repeatRows=1)
         estilo = [("BACKGROUND", (0, 0), (-1, 0), NAVY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                   ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f4f4")])]
         estilo += [("TEXTCOLOR", (5, i + 1), (5, i + 1), VERMELHO) for i, l in enumerate(linhas_c) if l[5] == "Fora do prazo"]
         t.setStyle(TableStyle(estilo))
         h.append(t)
-        detalhe = str(chamados["detalhe"].iloc[0] or "").strip()
+        detalhe = str(chamados["detalhe"].iloc[0] or "").strip() if unico else ""
         if detalhe:
             h += [Spacer(1, 3), Paragraph(f"<b>Detalhe:</b> {esc(detalhe.capitalize())}", TEXTO)]
+
+    if demandas is not None and len(demandas):
+        h.append(Paragraph("Demandas de estrutura sem chamado (Q36)", SECAO))
+        if demandas["motivo"].ne("").any():
+            linhas_d = [[Paragraph(f'<font color="white"><b>{c}</b></font>', CELH) for c in ("Motivo", "Descrição")]]
+            linhas_d += [[Paragraph(esc(r["motivo"].capitalize()), CELH), Paragraph(esc(str(r["detalhe"]).capitalize()), CELH)]
+                         for _, r in demandas.iterrows()]
+            t = Table(linhas_d, colWidths=[56 * mm, 118 * mm], repeatRows=1)
+            t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), NAVY), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                   ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f4f4")])]))
+            h.append(t)
+        else:
+            h.append(Paragraph("A loja respondeu que há demanda de estrutura sem chamado aberto.", TEXTO))
 
     h.append(Paragraph("Histórico da loja", SECAO))
     cab_h = ["Mês", "Data", "Score", "Maturidade", "Risco", "Ciclo", "Estrutura", "Sup. esp."]
     dados_h = [cab_h] + [[R.rotulo_mes(r["competencia"]), f"{r['timestamp']:%d/%m/%y}",
                           f"{r['score']:.2f}".replace(".", ","), r["maturidade"], r["risco"], r["ciclo"],
-                          "Com chamados" if r["estrutura"] == "Com chamados abertos" else "Sem chamados",
+                          r["estrutura"],
                           "Sim" if r["supervisao_especial"] else ""]
                          for _, r in historico.sort_values("competencia", ascending=False).iterrows()]
     t = Table([[Paragraph(esc(str(c)), CELH) for c in l] for l in dados_h],

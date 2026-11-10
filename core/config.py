@@ -32,26 +32,83 @@ PERGUNTA_ASSIDUIDADE = "Q35"
 
 # ---------------------------------------------------------------------------
 # Escala de frequência (desde novembro de 2026). Q1 a Q35 usam 4 níveis sem meio;
-# a Q36 continua Sim ou Não. Preenchimentos antigos: Sim vale como Sempre e Não como Nunca.
+# a Q36 é o status da estrutura (ver abaixo). Preenchimentos antigos: Sim vale como Sempre e Não como Nunca.
 # Cada nível vale uma parte do ponto da pergunta; Nunca e Às vezes contam como Não
 # em % de Não, risco, assiduidade, casos graves e pontos de melhoria.
 # ---------------------------------------------------------------------------
 NIVEIS = ["Nunca", "Às vezes", "Quase sempre", "Sempre"]
-VALOR_RESPOSTA = {"Nunca": 0.0, "Às vezes": 1 / 3, "Quase sempre": 2 / 3, "Sempre": 1.0, "Sim": 1.0, "Não": 0.0}
-RESPOSTAS_NAO = {"Nunca", "Às vezes", "Não"}
+# Q36 desde 11/2026: Sem pendências e Demanda com chamado valem o ponto cheio; Demanda sem chamado vale zero
+# e conta como Não. Nos meses antigos, Sim equivale a com chamado e Não a sem chamado.
+Q36_SEM_PENDENCIAS = "Sem pendências"
+Q36_COM_CHAMADO = "Demanda com chamado"
+Q36_SEM_CHAMADO = "Demanda sem chamado"
+VALOR_RESPOSTA = {"Nunca": 0.0, "Às vezes": 1 / 3, "Quase sempre": 2 / 3, "Sempre": 1.0, "Sim": 1.0, "Não": 0.0,
+                  Q36_SEM_PENDENCIAS: 1.0, Q36_COM_CHAMADO: 1.0, Q36_SEM_CHAMADO: 0.0}
+RESPOSTAS_NAO = {"Nunca", "Às vezes", "Não", Q36_SEM_CHAMADO}
+
+# Situação estrutural da loja (coluna "estrutura"), a partir da Q36
+ESTRUTURA_SEM_PENDENCIAS = "Sem pendências"
+ESTRUTURA_COM_CHAMADO = "Com chamado aberto"
+ESTRUTURA_SEM_CHAMADO = "Demanda sem chamado"
+ESTRUTURA_DA_RESPOSTA = {Q36_SEM_PENDENCIAS: ESTRUTURA_SEM_PENDENCIAS, Q36_COM_CHAMADO: ESTRUTURA_COM_CHAMADO,
+                         "Sim": ESTRUTURA_COM_CHAMADO, Q36_SEM_CHAMADO: ESTRUTURA_SEM_CHAMADO, "Não": ESTRUTURA_SEM_CHAMADO}
+ORDEM_ESTRUTURA = [ESTRUTURA_SEM_PENDENCIAS, ESTRUTURA_COM_CHAMADO, ESTRUTURA_SEM_CHAMADO]
 ESCALA_DESDE = "2026-11-01"
 COR_RESPOSTA = {"Sempre": "#2E7D32", "Sim": "#2E7D32", "Quase sempre": "#7CB342", "Às vezes": "#E07020",
-                "Nunca": "#C62828", "Não": "#C62828"}
+                "Nunca": "#C62828", "Não": "#C62828", Q36_SEM_PENDENCIAS: "#2E7D32", Q36_COM_CHAMADO: "#2E7D32",
+                Q36_SEM_CHAMADO: "#C62828"}
 MESES_TRANSICAO = 2               # meses com aviso de transição nas faixas de maturidade
 
-# Chamados de estrutura informados na Q36 (quando a resposta é Sim).
-# Cada chamado tem motivo, número e data de abertura; o detalhe é um texto só.
-# As três colunas de chamado guardam os valores na mesma ordem, separados por " | ".
+# Itens da Q36. Com chamado: motivo, número, data de abertura e detalhe de cada chamado.
+# Sem chamado: motivo e descrição de cada demanda. Valores na mesma ordem, separados por " | ".
+# Q36_OBS: detalhe único dos preenchimentos antigos (valia para todos os chamados do checklist).
 COL_Q36_MOTIVOS = "Q36_MOTIVOS"
 COL_Q36_CHAMADOS = "Q36_CHAMADOS"
 COL_Q36_ABERTURA = "Q36_ABERTURA"
+COL_Q36_DETALHES = "Q36_DETALHES"
 COL_Q36_OBS = "Q36_OBS"
-COLUNAS_Q36 = [COL_Q36_MOTIVOS, COL_Q36_CHAMADOS, COL_Q36_ABERTURA, COL_Q36_OBS]
+COLUNAS_Q36 = [COL_Q36_MOTIVOS, COL_Q36_CHAMADOS, COL_Q36_ABERTURA, COL_Q36_DETALHES, COL_Q36_OBS]
+
+# Coerência entre o motivo e o detalhe: palavras de cada motivo, comparadas sem acento e pelo começo
+# da palavra ("INFILTRA" pega infiltração e infiltrando). Palavras de até 3 letras, e as terminadas em $,
+# valem só inteiras (PORTA$ não pega portabilidade).
+# Motivo sem palavras (Outros) não é verificado.
+PALAVRAS_MOTIVO = {
+    "SERVIÇO DE INFORMÁTICA": "INFORMATICA COMPUTADOR NOTEBOOK TECLADO MOUSE MONITOR$ MONITORES$ IMPRESSORA INTERNET WIFI WI-FI "
+                              "SISTEMA TELEFONE CPU PC TI NOBREAK ESTABILIZADOR ROTEADOR SCANNER HEADSET",
+    "INFILTRAÇÃO PAREDES E TETO": "INFILTRA GOTEIRA MOFO UMIDADE UMIDO TETO FORRO PAREDE",
+    "MANUTENÇÃO DE PORTAS": "PORTA$ PORTAS$ FECHADURA MACANETA DOBRADICA PORTAO TRANCA",
+    "MANUTENÇÃO HIDRÁULICA": "HIDRAULIC VAZAMENTO VAZANDO TORNEIRA PIA VASO DESCARGA ENCANAMENTO CANO$ CANOS$ ESGOTO "
+                             "ENTUPI BANHEIRO",
+    "SERVIÇOS ELÉTRICOS": "ELETRIC LAMPADA LUZ ILUMINA TOMADA DISJUNTOR FIACAO FIO FIOS$ ENERGIA CIRCUITO INTERRUPTOR "
+                          "REATOR "
+                          "LUMINARIA",
+    "MANUTENÇÃO DE JANELAS": "JANELA VIDRO PERSIANA CORTINA VITRINE",
+    "ROUBO / FURTO / ARROMBAMENTO": "ROUBO ROUBAD FURTO FURTAD ARROMBA ASSALTO INVASAO INVADID",
+    "MANUTENÇÃO AR-CONDICIONADO": "AR-CONDICIONADO AR CONDICIONADO CLIMATIZ SPLIT REFRIGERA",
+    "MANUTENÇÃO BEBEDOURO / PURIFICADOR": "BEBEDOURO PURIFICADOR FILTRO GALAO",
+    "MANUTENÇÃO MÓVEIS E UTENSÍLIOS": "MOVEL MOVEIS CADEIRA MESA$ MESAS$ ARMARIO GAVETA BALCAO ESTANTE SOFA POLTRONA PRATELEIRA "
+                                      "MONTADOR MONTAGEM UTENSILIO LONGARINA",
+    "EXTINTOR: RECARGA": "EXTINTOR RECARGA",
+    "EXTINTOR: NOVO": "EXTINTOR RECARGA",
+    "DEDETIZAÇÃO": "DEDETIZ BARATA RATO CUPIM INSETO PRAGA FORMIGA POMBO ESCORPI",
+    "SERVIÇOS DE REFORMA": "REFORMA PINTURA PINTAR PISO OBRA REBOCO AZULEJO GESSO",
+    "COMUNICAÇÃO VISUAL": "FACHADA LETREIRO PLACA ADESIVO BANNER LOGOMARCA TOTEM ENVELOPAMENTO",
+    "OUTROS": "",
+}
+COERENTE = "Coerente"
+CITA_OUTRO_MOTIVO = "Cita outro motivo"
+NAO_CITA_MOTIVO = "Não cita o motivo"
+SEM_DETALHE = "Sem detalhe"
+SEM_VERIFICACAO = "Sem verificação"
+CORES_COERENCIA = {CITA_OUTRO_MOTIVO: "#C62828", NAO_CITA_MOTIVO: "#E07020", SEM_DETALHE: "#E07020"}
+
+# Atuação da monitoria nos chamados e demandas (aba própria na planilha, uma linha por registro;
+# vale o registro mais recente de cada chave).
+ABA_ATUACOES = "Atuacoes_Chamados"
+COLUNAS_ATUACOES = ["registrado_em", "chave", "cod_loja", "loja", "tipo", "chamado", "motivo", "atuado", "status",
+                    "observacao", "responsavel"]
+STATUS_ATUACAO = ["Em tratativa", "Resolvido"]
 
 # Motivos e prazo de atendimento (dias corridos) da tabela "Ordem de Atendimentos e SLA" do Facilities.
 # None: sem prazo fixo (Reforma e Comunicação visual variam por UF; Outros não tem tabela).
@@ -170,8 +227,12 @@ AJUDA = {
                  "Treina e domina, Treino ineficaz, Talento natural ou Crítico.",
     "risco": "Conta quantas falhas (Não, Nunca ou Às vezes) a loja teve em Q31 (inadimplência), Q24 (pendências) e Q32 (portabilidade). "
              "0 Sem risco, 1 Atenção, 2 Risco alto, 3 Risco crítico.",
-    "estrutura": "Q36. Com chamados abertos é bom: o problema de estrutura foi registrado. "
-                 "Sem chamados abertos é alerta.",
+    "estrutura": "Q36. Sem pendências: loja regular. Com chamado aberto: há reparo e o chamado foi registrado. "
+                 "Demanda sem chamado: há problema estrutural sem chamado aberto (não conformidade). "
+                 "Nos meses antigos, Sim conta como com chamado e Não como sem chamado.",
+    "coerencia": "Compara o detalhe de cada chamado com palavras do motivo dele. Cita outro motivo: o detalhe fala de "
+                 "outro tipo de problema. Não cita o motivo: nenhuma palavra do motivo aparece. Nos checklists antigos "
+                 "o detalhe era um texto só para todos os chamados.",
     "escala": "Desde novembro de 2026, Q1 a Q35 são respondidas em 4 níveis: Nunca (0), Às vezes (1/3), "
               "Quase sempre (2/3) e Sempre (o ponto inteiro). Nunca e Às vezes contam como Não. "
               "Nos meses anteriores, Sim vale como Sempre e Não como Nunca.",

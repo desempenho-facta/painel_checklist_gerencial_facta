@@ -45,7 +45,8 @@ tab_txt = tab.assign(Score=tab["Score"].map(lambda v: "" if pd.isna(v) else ui.n
 estilo = ui.estilo_tabela(tab_txt, {
     "Situação": ui.CORES_STATUS, "Maturidade": ui.CORES_MATURIDADE, "Risco": ui.CORES_RISCO,
     "Supervisão especial": {"Sim": C.COR_LARANJA},
-    "Estrutura (Q36)": {"Com chamados abertos": C.COR_VERDE, "Sem chamados abertos": C.COR_VERMELHO},
+    "Estrutura (Q36)": {C.ESTRUTURA_SEM_PENDENCIAS: C.COR_VERDE, C.ESTRUTURA_COM_CHAMADO: C.COR_AZUL,
+                        C.ESTRUTURA_SEM_CHAMADO: C.COR_VERMELHO},
 })
 st.dataframe(
     estilo, hide_index=True, use_container_width=True, height=min(38 * (len(tab) + 1), 720),

@@ -35,7 +35,7 @@ ui.cards([
          cor=ui.cor_score(ind["score"]), ajuda=C.AJUDA["score"]),
     dict(numero=ui.pct(ind["pct_maduras"]), rotulo="Lojas maduras", sub=f"{ind['reativas']} reativas",
          cor=ui.VERDE_CLARO, ajuda=C.AJUDA["maturidade"]),
-    dict(numero=ind["risco_critico"], rotulo="Risco crítico", sub=f"{ind['sem_chamados']} sem chamados abertos",
+    dict(numero=ind["risco_critico"], rotulo="Risco crítico", sub=f"{ind['sem_chamados']} com demanda sem chamado",
          cor=ui.VERMELHO_CLARO if ind["risco_critico"] else ui.VERDE_CLARO, ajuda=C.AJUDA["risco"]),
 ], minimo=160)
 

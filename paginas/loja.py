@@ -38,10 +38,11 @@ rede_blocos = {bl: rede_mes[f"pct_{bl}"].mean() for bl in C.BLOCOS} if len(rede_
 grave_df = R.casos_graves(hist, p["competencia"])
 grave = grave_df.iloc[0] if len(grave_df) else None
 chamados = R.chamados_q36(ate_mes.iloc[[-1]])
+demandas = R.demandas_sem_chamado(ate_mes.iloc[[-1]])
 
 with b:
     pdf = relatorio.gerar_pdf(rotulos[cod], p, R.historico_loja(ate_mes, cod), grave, rede_blocos, ctx.rotulo_visao,
-                               chamados)
+                               chamados, demandas)
     st.download_button("Baixar relatório (PDF)", pdf, file_name=f"diagnostico_{cod}_{p['competencia']:%Y_%m}.pdf",
                        mime="application/pdf", use_container_width=True, type="primary",
                        help="Relatório da loja com situação do mês, pontos de melhoria, histórico e respostas.")
@@ -97,8 +98,8 @@ with dir_:
              ajuda=C.AJUDA["risco"]),
         dict(numero=p["ciclo"], rotulo="Ciclo de gestão", sub="treinar, verificar e acompanhar", ajuda=C.AJUDA["ciclo"]),
         dict(numero=p["quadrante"], rotulo="Quadrante do treino", sub="treinar x domínio de método", ajuda=C.AJUDA["quadrante"]),
-        dict(numero="Com chamados" if p["estrutura"] == "Com chamados abertos" else "Sem chamados", rotulo="Estrutura (Q36)",
-             sub="chamados de estrutura", cor=ui.VERDE_CLARO if p["estrutura"] == "Com chamados abertos" else ui.VERMELHO_CLARO,
+        dict(numero=p["estrutura"] or "Sem resposta", rotulo="Estrutura (Q36)", sub="status da infraestrutura",
+             cor=ui.VERMELHO_CLARO if p["estrutura"] == C.ESTRUTURA_SEM_CHAMADO else ui.VERDE_CLARO,
              ajuda=C.AJUDA["estrutura"]),
     ], minimo=180)
 
@@ -110,9 +111,18 @@ if len(chamados):
         "Dias em aberto": chamados["dias_aberto"].map(lambda v: "" if pd.isna(v) else str(int(v))),
         "Prazo (dias)": chamados["sla"].map(lambda v: "sem prazo" if pd.isna(v) else str(int(v))),
         "Situação": chamados["situacao_sla"],
-    }), hide_index=True, use_container_width=True, column_config={"Motivo": st.column_config.TextColumn(width=240)})
-    if chamados["detalhe"].iloc[0]:
-        st.caption(f"Detalhe: {chamados['detalhe'].iloc[0].capitalize()}")
+        "Coerência": chamados["coerencia"] + chamados["cita"].map(lambda c: f" ({c})" if c else ""),
+        "Detalhe": chamados["detalhe"].str.capitalize(),
+    }), hide_index=True, use_container_width=True, column_config={"Motivo": st.column_config.TextColumn(width=240),
+                                                                  "Detalhe": st.column_config.TextColumn(width=320)})
+    if chamados["detalhe_unico"].iloc[0]:
+        st.caption("Checklist anterior à mudança da Q36: o detalhe era um texto só para todos os chamados.")
+if len(demandas):
+    ui.destaque(f"<b>Demanda sem chamado ({len(demandas)}).</b> Há problema estrutural informado sem chamado aberto.")
+    if demandas["motivo"].ne("").any():
+        st.dataframe(pd.DataFrame({"Motivo": demandas["motivo"].str.capitalize(),
+                                   "Descrição": demandas["detalhe"].str.capitalize()}),
+                     hide_index=True, use_container_width=True)
 
 # Pontos de melhoria: perguntas com Não, por bloco
 naos = [(bl, q) for bl, b_ in C.BLOCOS.items() for q in b_["perguntas"] if R.e_nao(p[q])]

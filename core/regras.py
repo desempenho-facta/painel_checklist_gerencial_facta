@@ -16,6 +16,7 @@ lojas: aba de lojas (uma linha por loja), colunas por nome:
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from datetime import date
 
@@ -134,7 +135,7 @@ def preparar_respostas(respostas: pd.DataFrame) -> pd.DataFrame:
     df["falhas_criticas"] = nao[list(C.PERGUNTAS_RISCO)].sum(axis=1).astype(int)
     df["risco"] = df["falhas_criticas"].map(C.NIVEIS_RISCO)
 
-    df["estrutura"] = np.where(df[C.PERGUNTA_ESTRUTURA].eq("Sim"), "Com chamados abertos", "Sem chamados abertos")
+    df["estrutura"] = df[C.PERGUNTA_ESTRUTURA].map(C.ESTRUTURA_DA_RESPOSTA).fillna("")
     df["avaliar_forca"] = np.where(df["pct_Avaliar"] >= C.LIMIAR_BLOCO, "Avalia bem", "Avalia pouco")
     df["incentivar_forca"] = np.where(df["pct_Incentivar"] >= C.LIMIAR_BLOCO, "Incentiva bem", "Incentiva pouco")
     df["equipe_assidua"] = np.where(df[C.PERGUNTA_ASSIDUIDADE].isin(C.RESPOSTAS_NAO), "Equipe não assídua",
@@ -180,31 +181,116 @@ def _partes(txt: str) -> list[str]:
     return [p.strip() for p in str(txt or "").split("|")] if str(txt or "").strip() else []
 
 
+def _palavras_motivo() -> dict[str, re.Pattern | None]:
+    """Expressão regular de cada motivo, a partir de C.PALAVRAS_MOTIVO (sem acento, maiúsculas)."""
+    out = {}
+    for motivo, txt in C.PALAVRAS_MOTIVO.items():
+        partes = []
+        for w in sem_acento(txt).upper().split():
+            inteira = w.endswith("$") or len(w) <= 3
+            w = re.escape(w.rstrip("$"))
+            partes.append(rf"\b{w}\b" if inteira else rf"\b{w}")
+        out[motivo] = re.compile("|".join(partes)) if partes else None
+    return out
+
+
+_RE_MOTIVO = _palavras_motivo()
+
+
+def motivos_citados(texto: str) -> set[str]:
+    """Motivos cujas palavras aparecem no texto."""
+    t = sem_acento(str(texto or "")).upper()
+    return {m for m, rx in _RE_MOTIVO.items() if rx is not None and rx.search(t)}
+
+
+def coerencia(motivo: str, detalhe: str, ignorar: set[str] = frozenset()) -> tuple[str, str]:
+    """Compara o detalhe com o motivo. Devolve (situação, motivos citados no lugar, separados por vírgula).
+
+    ignorar: motivos que não contam como "outro motivo" (no texto único dos checklists antigos,
+    os motivos dos outros chamados do mesmo checklist).
+    """
+    if _RE_MOTIVO.get(motivo) is None:
+        return C.SEM_VERIFICACAO, ""
+    if not str(detalhe or "").strip():
+        return C.SEM_DETALHE, ""
+    citados = motivos_citados(detalhe)
+    if motivo in citados:
+        return C.COERENTE, ""
+    # Motivos que dividem palavras com o do chamado (os dois de extintor) não contam como outro motivo
+    proprio = _RE_MOTIVO[motivo].pattern
+    ignorados = {proprio} | {_RE_MOTIVO[m].pattern for m in ignorar if _RE_MOTIVO.get(m) is not None}
+    outros = sorted(m for m in citados if _RE_MOTIVO[m].pattern not in ignorados)
+    if outros:
+        return C.CITA_OUTRO_MOTIVO, ", ".join(m.capitalize() for m in outros)
+    return C.NAO_CITA_MOTIVO, ""
+
+
+def _itens_q36(r) -> list[dict]:
+    """Itens da Q36 de um preenchimento: motivo, número, abertura e detalhe de cada um."""
+    motivos = _partes(getattr(r, C.COL_Q36_MOTIVOS))
+    numeros = _partes(getattr(r, C.COL_Q36_CHAMADOS))
+    datas = _partes(getattr(r, C.COL_Q36_ABERTURA))
+    detalhes = _partes(getattr(r, C.COL_Q36_DETALHES))
+    obs = getattr(r, C.COL_Q36_OBS)          # preenchimentos antigos: um texto só para todos
+    n = max(len(motivos), len(numeros))
+    itens = []
+    for i in range(n):
+        itens.append({
+            "motivo": motivos[i] if i < len(motivos) else "OUTROS",
+            "chamado": numeros[i] if i < len(numeros) else "",
+            "abertura": pd.to_datetime(datas[i], errors="coerce") if i < len(datas) else pd.NaT,
+            "detalhe": detalhes[i] if i < len(detalhes) else (obs if not detalhes else ""),
+            "detalhe_unico": not detalhes,
+        })
+    return itens
+
+
 def chamados_q36(val: pd.DataFrame) -> pd.DataFrame:
-    """Um chamado por linha, a partir das colunas da Q36 dos preenchimentos recebidos.
+    """Um chamado por linha, a partir das colunas da Q36 dos preenchimentos com chamado aberto.
 
     Os dias em aberto vão da data de abertura até a data do preenchimento. Fora do prazo:
     dias em aberto maiores que o SLA do motivo. Sem prazo definido: motivo sem SLA fixo.
+    A coerência compara o detalhe de cada chamado com as palavras do motivo dele.
     """
     cols = ["COD_LOJAS", "LOJA", "competencia", "timestamp", "motivo", "chamado", "abertura",
-            "dias_aberto", "sla", "situacao_sla", "detalhe"]
+            "dias_aberto", "sla", "situacao_sla", "detalhe", "detalhe_unico", "coerencia", "cita"]
     linhas = []
-    base = val[val[C.PERGUNTA_ESTRUTURA].eq("Sim") & val[C.COL_Q36_CHAMADOS].ne("")] if len(val) else val
+    com = val[C.PERGUNTA_ESTRUTURA].map(C.ESTRUTURA_DA_RESPOSTA).eq(C.ESTRUTURA_COM_CHAMADO) if len(val) else None
+    base = val[com & val[C.COL_Q36_CHAMADOS].ne("")] if len(val) else val
     for r in base.itertuples(index=False):
-        motivos = _partes(getattr(r, C.COL_Q36_MOTIVOS))
-        numeros = _partes(getattr(r, C.COL_Q36_CHAMADOS))
-        datas = _partes(getattr(r, C.COL_Q36_ABERTURA))
-        for i, num in enumerate(numeros):
-            motivo = motivos[i] if i < len(motivos) else "OUTROS"
-            abertura = pd.to_datetime(datas[i], errors="coerce") if i < len(datas) else pd.NaT
+        itens = _itens_q36(r)
+        do_checklist = {it["motivo"] for it in itens}
+        for it in itens:
+            if not it["chamado"]:
+                continue
+            abertura = it["abertura"]
             dias = (r.timestamp.normalize() - abertura).days if pd.notna(abertura) else np.nan
-            sla = C.SLA_FACILITIES.get(motivo)
+            sla = C.SLA_FACILITIES.get(it["motivo"])
             if sla is None or pd.isna(dias):
                 situacao = "Sem prazo definido"
             else:
                 situacao = "Fora do prazo" if dias > sla else "Dentro do prazo"
-            linhas.append([r.COD_LOJAS, r.LOJA, r.competencia, r.timestamp, motivo, num, abertura,
-                           dias, sla, situacao, getattr(r, C.COL_Q36_OBS)])
+            sit_c, cita = coerencia(it["motivo"], it["detalhe"], do_checklist if it["detalhe_unico"] else frozenset())
+            linhas.append([r.COD_LOJAS, r.LOJA, r.competencia, r.timestamp, it["motivo"], it["chamado"], abertura,
+                           dias, sla, situacao, it["detalhe"], it["detalhe_unico"], sit_c, cita])
+    return pd.DataFrame(linhas, columns=cols)
+
+
+def demandas_sem_chamado(val: pd.DataFrame) -> pd.DataFrame:
+    """Uma demanda por linha nos preenchimentos com Q36 = Demanda sem chamado (ou Não, nos meses antigos).
+
+    Nos meses antigos não há motivo nem descrição: a loja aparece com uma linha sem detalhe.
+    """
+    cols = ["COD_LOJAS", "LOJA", "competencia", "timestamp", "item", "motivo", "detalhe", "coerencia", "cita"]
+    if not len(val):
+        return pd.DataFrame(columns=cols)
+    base = val[val[C.PERGUNTA_ESTRUTURA].map(C.ESTRUTURA_DA_RESPOSTA).eq(C.ESTRUTURA_SEM_CHAMADO)]
+    linhas = []
+    for r in base.itertuples(index=False):
+        itens = _itens_q36(r) or [{"motivo": "", "detalhe": ""}]
+        for i, it in enumerate(itens):
+            sit_c, cita = coerencia(it["motivo"], it["detalhe"]) if it["motivo"] else ("", "")
+            linhas.append([r.COD_LOJAS, r.LOJA, r.competencia, r.timestamp, i, it["motivo"], it["detalhe"], sit_c, cita])
     return pd.DataFrame(linhas, columns=cols)
 
 
@@ -320,7 +406,7 @@ def indicadores(recorte: pd.DataFrame) -> dict:
         "pct_maduras": (preench["maturidade"].eq("Madura").mean()) if n_pre else np.nan,
         "reativas": int(preench["maturidade"].eq("Reativa").sum()),
         "risco_critico": int(preench["risco"].eq("Risco crítico").sum()),
-        "sem_chamados": int(preench["estrutura"].eq("Sem chamados abertos").sum()),
+        "sem_chamados": int(preench["estrutura"].eq(C.ESTRUTURA_SEM_CHAMADO).sum()),
         "lojas_novas": int(recorte["status"].eq("Loja nova").sum()),
     }
 

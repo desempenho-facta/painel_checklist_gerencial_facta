@@ -89,7 +89,7 @@ def test_risco_conta_q31_q24_q32():
 def test_estrutura_q36():
     r, _, _ = preparar([resposta("2026-08-05 10:00:00", "1"), resposta("2026-08-05 10:00:00", "2", nao_em=["Q36"])],
                        [loja("1"), loja("2")])
-    assert list(r["estrutura"]) == ["Com chamados abertos", "Sem chamados abertos"]
+    assert list(r["estrutura"]) == [C.ESTRUTURA_COM_CHAMADO, C.ESTRUTURA_SEM_CHAMADO]     # meses antigos: Sim e Não
 
 
 def test_ciclo_e_quadrante():
@@ -360,3 +360,59 @@ def test_sim_nao_antigo_continua_igual():
     assert R.credito("Sim") == 1 and R.credito("Não") == 0
     assert R.e_nao("Não") and R.e_nao("Nunca") and R.e_nao("Às vezes") and not R.e_nao("Quase sempre")
     assert R.em_transicao("2026-11-01") and R.em_transicao("2026-12-01") and not R.em_transicao("2027-01-01")
+
+
+# ---------------------------------------------------------------------------
+# Q36 em três situações (desde 11/2026), detalhe por chamado e coerência
+# ---------------------------------------------------------------------------
+def _q36(cod, situacao, **cols):
+    base = {"timestamp": "2026-11-10 10:00:00", "REGIONAL": "R", "COORDENADOR": "C", "LOJA": f"{cod} - LOJA {cod}",
+            "SUPERVISOR": "PAULA LIMA", "COD_LOJAS": cod, **{q: "Sempre" for q in C.PERGUNTAS}}
+    return {**base, "Q36": situacao, **cols}
+
+
+def test_q36_tres_situacoes_score_e_estrutura():
+    val = R.validos(R.preparar_respostas(pd.DataFrame([
+        _q36("1", C.Q36_SEM_PENDENCIAS), _q36("2", C.Q36_COM_CHAMADO), _q36("3", C.Q36_SEM_CHAMADO)])))
+    assert list(val["estrutura"]) == [C.ESTRUTURA_SEM_PENDENCIAS, C.ESTRUTURA_COM_CHAMADO, C.ESTRUTURA_SEM_CHAMADO]
+    assert list(val["pct_Estrutura"]) == [1.0, 1.0, 0.0]
+    assert val["score"].iloc[0] == pytest.approx(100) and val["score"].iloc[1] == pytest.approx(100)
+    assert val["score"].iloc[2] < 100
+    assert R.e_nao(C.Q36_SEM_CHAMADO) and not R.e_nao(C.Q36_COM_CHAMADO)
+
+
+def test_chamados_com_detalhe_por_chamado_e_coerencia():
+    val = R.validos(R.preparar_respostas(pd.DataFrame([_q36(
+        "1", C.Q36_COM_CHAMADO,
+        Q36_MOTIVOS="MANUTENÇÃO BEBEDOURO / PURIFICADOR | MANUTENÇÃO HIDRÁULICA | OUTROS",
+        Q36_CHAMADOS="10 | 11 | 12", Q36_ABERTURA="2026-11-01 | 2026-11-01 | 2026-11-01",
+        Q36_DETALHES="MÓVEIS AGUARDANDO O MONTADOR | VAZAMENTO NA PIA DA COPA | PROBLEMA QUALQUER")])))
+    ch = R.chamados_q36(val)
+    assert list(ch["detalhe"]) == ["MÓVEIS AGUARDANDO O MONTADOR", "VAZAMENTO NA PIA DA COPA", "PROBLEMA QUALQUER"]
+    assert list(ch["coerencia"]) == [C.CITA_OUTRO_MOTIVO, C.COERENTE, C.SEM_VERIFICACAO]
+    assert ch["cita"].iloc[0] == "Manutenção móveis e utensílios"
+    assert not ch["detalhe_unico"].any()
+
+
+def test_coerencia_texto_unico_antigo_e_palavras_inteiras():
+    val = R.validos(R.preparar_respostas(pd.DataFrame([_q36(
+        "1", "Sim", Q36_MOTIVOS="MANUTENÇÃO DE PORTAS | EXTINTOR: NOVO", Q36_CHAMADOS="20 | 21",
+        Q36_ABERTURA="2026-11-01 | 2026-11-01", Q36_OBS="SALDO DE PORTABILIDADE E RECARGA DO EXTINTOR")])))
+    ch = R.chamados_q36(val)
+    assert ch["detalhe_unico"].all()
+    # "portabilidade" não conta como porta; os dois motivos de extintor dividem as palavras
+    assert list(ch["coerencia"]) == [C.NAO_CITA_MOTIVO, C.COERENTE]
+    assert R.coerencia("SERVIÇOS ELÉTRICOS", "") == (C.SEM_DETALHE, "")
+
+
+def test_demandas_sem_chamado():
+    val = R.validos(R.preparar_respostas(pd.DataFrame([
+        _q36("1", C.Q36_SEM_CHAMADO, Q36_MOTIVOS="MANUTENÇÃO MÓVEIS E UTENSÍLIOS | SERVIÇOS ELÉTRICOS",
+             Q36_DETALHES="CADEIRA QUEBRADA | LÂMPADA QUEIMADA"),
+        {**_q36("2", "Não"), "timestamp": "2026-10-05 10:00:00"},
+        _q36("3", C.Q36_COM_CHAMADO, Q36_MOTIVOS="OUTROS", Q36_CHAMADOS="9", Q36_ABERTURA="2026-11-01")])))
+    dsc = R.demandas_sem_chamado(val)
+    assert list(dsc["COD_LOJAS"]) == ["1", "1", "2"]
+    assert list(dsc["motivo"]) == ["MANUTENÇÃO MÓVEIS E UTENSÍLIOS", "SERVIÇOS ELÉTRICOS", ""]
+    assert list(dsc["coerencia"]) == [C.COERENTE, C.COERENTE, ""]
+    assert R.chamados_q36(val)["chamado"].tolist() == ["9"]

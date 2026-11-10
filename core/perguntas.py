@@ -36,5 +36,5 @@ PERGUNTAS_TEXTO = {
     "Q33": 'O Supervisor de Loja conhece a particularidade de sua carteira de clientes de FF, como potencial, população da cidade e carteira de cliente ativos e inativos por produto?',
     "Q34": 'Supervisor faz a gestão e controle das horas extras diariamente?',
     "Q35": 'A equipe mantém assiduidade em loja (pontualidade e frequência).',
-    "Q36": 'Todos os chamados necessários para reparo, manutenção, infraestrutura, etc... estão abertos e aguardando solução.',
+    "Q36": 'Qual é o status atual da infraestrutura e manutenção predial da loja?',
 }

@@ -1,7 +1,8 @@
 # Painel Checklist Gerencial Facta
 
 Painel em Streamlit que substitui os três arquivos do Power BI (Coordenador, Regional e Monitoria & Desempenho).
-Fica separado do app do formulário: só lê a planilha CheckListAcompanhamento, nunca escreve nela.
+Fica separado do app do formulário: lê a planilha CheckListAcompanhamento e só escreve na aba Atuacoes_Chamados
+(atuação da monitoria nos chamados da Q36, apenas pelo app da monitoria).
 
 ## Três apps, um código
 
@@ -87,7 +88,11 @@ São 51 testes cobrindo pesos, score, maturidade, risco, estrutura, último pree
    a. três workspaces (um por conta ou organização do GitHub), um app privado em cada;
    b. login com a conta Microsoft (`st.login` com Entra ID): o app pode ficar público, mas só abre para
       quem entrar com o e-mail da Facta. Precisa do registro do app pela TI.
-4. A conta de serviço precisa ter acesso de leitor na planilha.
+4. A conta de serviço precisa ser editora da planilha (o app da monitoria grava a aba Atuacoes_Chamados).
+5. Q36 desde novembro de 2026: Sem pendências, Demanda com chamado (protocolo, data, motivo e detalhe de cada chamado)
+   ou Demanda sem chamado (motivo e descrição; não conformidade, vale zero). Meses antigos: Sim conta como com chamado
+   e Não como sem chamado. O detalhe de cada chamado é comparado com palavras do motivo (`PALAVRAS_MOTIVO`) e a
+   tela Risco e estrutura sinaliza quando cita outro motivo ou não cita o motivo.
 
 Quando o login entrar, ligar `TRAVAR_POR_EMAIL = true` nos secrets dos apps de regional e coordenador:
 a pessoa deixa de escolher o nome e passa a ver só o seu, pelo e-mail da aba de lojas.
@@ -97,6 +102,5 @@ Nunca subir o `secrets.toml` nem os CSVs de teste (o `.gitignore` já bloqueia).
 ## Pendências
 
 1. Login com conta Microsoft (Entra ID) aplicando a regra da Carteira, depois da migração.
-2. Campo de observação na Q36 (no app do formulário).
-3. Arquivo individual por loja com histórico e pontos de melhoria.
-4. Foto mensal da hierarquia (coordenador e regional de cada loja no mês).
+2. Arquivo individual por loja com histórico e pontos de melhoria.
+3. Foto mensal da hierarquia (coordenador e regional de cada loja no mês).
